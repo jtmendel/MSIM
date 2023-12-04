@@ -231,7 +231,7 @@ def make_rn_dist(det_save_path):
 	noise values.
 
 	Inputs:
-		det_save_path - Directory to save rn distribution to
+		det_save_path: Directory to save rn distribution to
 	"""
 	if det_save_path == "None":
 		det_save_path = detpath
@@ -276,10 +276,21 @@ def make_rn_dist(det_save_path):
 
 
 def make_dets(rn_vals, DIT):
+	"""
+	Create simulated detector data for multiple read noise values.
+
+	Inputs:
+		rn_vals (list): List of read noise values for each detector.
+		DIT (float): Detector integration time.
+
+	Outputs:
+		dets (ndarray): Array of simulated detector data for each detector.
+		dets_head (Header): Header information of the last detector data.
+	"""
 	dets = []
 	for i in range(8):
 		ng_h4rg = ng.HXRGNoise()
-		det_hdu = ng_h4rg.mknoise(o_file=None,rn_array=rn_vals[i],dit=DIT)
+		det_hdu = ng_h4rg.mknoise(o_file=None, rn_array=rn_vals[i], dit=DIT)
 		det_data = det_hdu.data
 		dets.append(det_data)
 	dets = np.array(dets)
