@@ -173,10 +173,11 @@ def sim_instrument(input_parameters, cube, back_emission, transmission, ext_lamb
 	''' Simulates instrument effects
 	Inputs:
 		input_parameters: input dictionary
-		exposure_time: Exposure time [s]
-		grating: Spectral grating
-		ao_mode: LTAO/SCAO/NOAO/AIRY/User defined PSF fits file
-		telescope_temp: Telescope temperature [K]
+			exposure_time: Exposure time [s]
+			grating: Spectral grating
+			ao_mode: LTAO/SCAO/NOAO/AIRY/User defined PSF fits file
+			telescope_temp: Telescope temperature [K]
+
 		cube: Input datacube (RA, DEC, lambda)
 		back_emission: Input background emission
 		transmission: Input transmission

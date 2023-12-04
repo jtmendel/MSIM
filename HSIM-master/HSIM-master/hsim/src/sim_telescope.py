@@ -20,12 +20,22 @@ from src.modules.em_model import *
 
 
 def process_lambda(params, lamb, image, px, py, pback):
+	"""
+	Process the given image with a specified wavelength.
+
+	Args:
+		params (list): List of parameters.
+		lamb (float): Wavelength value.
+		image (ndarray): Input image.
+		px (int): Width of the padding plane.
+		py (int): Height of the padding plane.
+		pback (float): Back emission value.
+
+	Returns:
+		tuple: Tuple containing the updated parameters and the convolved image.
+	"""
 	padding_plane = np.zeros((px, py))
-	#return i, padding_plane
 	psf = create_psf(lamb)
-	# np.sum(psf) is < 1, so to recover the same back emission after the convolution we need to 
-	# subctract before and then add the back emission. We assume that the back emission is uniform
-	# within the field
 	padding_plane[psf.shape[0]:psf.shape[0]+image.shape[0], psf.shape[1]:psf.shape[1]+image.shape[1]] = image - pback
 	conv_image = fftconvolve(padding_plane, psf) + pback
 	return params, conv_image
@@ -37,6 +47,15 @@ bar_str = None
 llambs = None
 
 def save_result(results):
+	"""
+	Save the results of the convolution operation.
+
+	Args:
+		results (tuple): A tuple containing the result indices and the convolution image.
+
+	Returns:
+		None
+	"""
 	global counter, result_cube, bar_str, llambs
 	counter = counter + 1
 	sys.stdout.write(bar_str.format(int(100.*counter/llambs), counter, llambs) + "\r")
@@ -48,6 +67,7 @@ def save_result(results):
 
 def sim_telescope(input_parameters, cube, back_emission, transmission, ext_lambs, cube_lamb_mask, debug_plots=False, output_file=""):
 	''' Simulates telescope effects
+ 
 	Inputs:
 		input_parameters: input dictionary
 			exposure_time: Exposure time [s]
