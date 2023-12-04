@@ -14,15 +14,15 @@ def path_setup(path):
 	return out_path
 
 def trim_cube(datacube, verbose=False):
-	''' Trims datacube to a size that will fit on 8 HAWAII 4RG
-		detectors when detector systematics are used.
+	'''
+	Trims datacube to a size that will fit on 8 HAWAII 4RG detectors when detector systematics are used.
 
-	Inputs:
-		datacube: object datacube
+	Args:
+		datacube (ndarray): The input datacube.
+		verbose (bool, optional): Whether to print verbose output. Defaults to False.
 
-	Outputs:
-		new_cube: trimmed cube
-
+	Returns:
+		ndarray: The trimmed datacube.
 	'''
 	z, x, y = datacube.shape
 	if z > 3700:
@@ -46,7 +46,7 @@ def trim_cube(datacube, verbose=False):
 			logging.info('Restricting x axis to 152 channels')
 	else:
 		x_low, x_high = 0, x
-		
+
 	if y > 204:
 		y_low = int((y - 204) / 2)
 		if y % 2 == 0:
@@ -57,6 +57,6 @@ def trim_cube(datacube, verbose=False):
 			logging.info('Restricting y axis to 204 spaxels')
 	else:
 		y_low, y_high = 0, y
-		
+
 	new_cube = datacube[lam_low:lam_high, x_low:x_high, y_low:y_high]
 	return new_cube

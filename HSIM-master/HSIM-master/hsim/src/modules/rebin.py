@@ -10,6 +10,18 @@ import numpy as np
 from scipy.integrate import quad
 
 def rebin1d(xout, xin, yin):
+	"""
+	Rebin 1D data to a new grid.
+
+	Args:
+		xout (array-like): Output grid values.
+		xin (array-like): Input grid values.
+		yin (array-like): Input data values.
+
+	Returns:
+		array-like: Rebinned data on the output grid.
+
+	"""
 	in0 = int(np.interp(xout[0], xin, range(len(xin))))
 	
 	dx_in = xin[in0+1] - xin[in0]
@@ -42,10 +54,9 @@ def rebin1d(xout, xin, yin):
 			frac1 = rstart - istart
 			frac2 = 1.0 - (rstop - istop)
 			
-			#print istart, istop, rstart, rstop
-			#Add pixel values from istart to istop an subtract
-			#fracion pixel from istart to rstart and fraction
-			#fraction pixel from rstop to istop.
+			# Add pixel values from istart to istop and subtract
+			# fraction pixel from istart to rstart and fraction
+			# fraction pixel from rstop to istop.
 			if istart == istop:
 				temp[i] = (1.0 - frac1 - frac2)*yin[istart]/(rstop - rstart)
 			else:
@@ -54,6 +65,19 @@ def rebin1d(xout, xin, yin):
 		return np.transpose(temp)
 
 def rebin_cube_1d(xout, xin, cube):
+	"""
+	Rebins a 3D cube along the first dimension to a new set of output values.
+
+	Args:
+		xout (array-like): 1D array of output values.
+		xin (array-like): 1D array of input values.
+		cube (ndarray): 3D input cube.
+
+	Returns:
+		ndarray: Rebinned 3D cube with shape (len(xout), cube.shape[1], cube.shape[2]).
+
+	"""
+	# Function implementation
 	in0 = int(np.interp(xout[0], xin, range(len(xin))))
 	
 	dx_in = xin[in0+1] - xin[in0]
@@ -90,10 +114,6 @@ def rebin_cube_1d(xout, xin, cube):
 			frac1 = rstart - istart
 			frac2 = 1.0 - (rstop - istop)
 
-			#print istart, istop, rstart, rstop
-			#Add pixel values from istart to istop an subtract
-			#fracion pixel from istart to rstart and fraction
-			#fraction pixel from rstop to istop.
 			new_cube[i,:,:] = (np.sum(cube[istart:istop+1,:,:], axis=0) - frac1*cube[istart,:,:] - frac2*cube[istop,:,:])/(rstop - rstart)
 
 		
@@ -101,16 +121,15 @@ def rebin_cube_1d(xout, xin, cube):
 
 
 def frebin2d(array, shape):
-	'''Function that performs flux-conservative
-	rebinning of an array.
+	'''
+	Function that performs flux-conservative rebinning of an array.
 
-	Inputs:
-		array: numpy array to be rebinned
-		shape: tuple (x,y) of new array size
-		total: Boolean, when True flux is conserved
+	Args:
+		array (numpy.ndarray): The numpy array to be rebinned.
+		shape (tuple): The new array size in the format (x, y).
 
-	Outputs:
-		new_array: new rebinned array with dimensions: shape
+	Returns:
+		numpy.ndarray: The new rebinned array with dimensions: shape.
 	'''
 
 	#Determine size of input image

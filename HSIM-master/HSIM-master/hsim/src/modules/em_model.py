@@ -16,38 +16,37 @@ import matplotlib.pylab as plt
 tppath = path_setup('../../' + config_data["data_dir"] + 'throughput/')
 
 def blackbody(waves, T):
-	'''Function that gives the Plank blackbody spectrum
+	'''
+ 	Function that gives the Plank blackbody spectrum
 	as a function of wavelength and temperature.
 
-	Inputs:
+	Args:
 		waves: value or array of wavelengths in microns
 		T: Temperature in Kelvin
 
-	Outputs:
-		bb_spectrum: value or array for Plank blackbody spectrum
-			units - [J/s/m^2/lambda(um)/arcsec^2]
+	Returns:
+		bb_spectrum: value or array for Plank blackbody spectrum units - [J/s/m^2/lambda(um)/arcsec^2]
 	'''
 
-	#Convert wavelength array from microns to metres
+	# Convert wavelength array from microns to metres
 	wave = waves*1.E-6
 	
 	exp_part = np.exp(sp.h*sp.c/(wave*sp.k*T))
 
-	#Flux in [J/s/m/m2/steradian]
+	# Flux in [J/s/m/m2/steradian]
 	bb_spectrum = (2.*sp.h*sp.c**2/wave**5)*(exp_part - 1)**(-1)
-	#put into units of: J/s/lambda(um)/m^2/arcsec^2
-	bb_spectrum /= 1.E6 #to get into J/s/m2/um/steradian
-	bb_spectrum /= 4.2545E10 #to get into J/s/m2/um/arcsec2
+	# put into units of: J/s/lambda(um)/m^2/arcsec^2
+	bb_spectrum /= 1.E6 # to get into J/s/m2/um/steradian
+	bb_spectrum /= 4.2545E10 # to get into J/s/m2/um/arcsec2
 	
 
 	return bb_spectrum
 
-
-
 def load_transmission_curve(wavels, filename, show_plot, plot_file, plot_label, scaling=1., full_curve=False):
-	'''Load a transmission curve from a file
+	'''
+ 	Load a transmission curve from a file
 
-	Inputs:
+	Args:
 		wavels: array of wavelengths for datacube
 		filename: file containing the transmission curve
 		show_plot: plot curve. True/False
@@ -55,16 +54,16 @@ def load_transmission_curve(wavels, filename, show_plot, plot_file, plot_label, 
 		plot_label: y label of the plot
 		full_curve: return the curve for the original wavelength range
 
-	Outputs:
+	Returns:
 		cube_trans: array of throughput for each wavelength value in wavels
 	'''
 
 	data = np.genfromtxt(os.path.join(tppath, filename), delimiter=',')
 
-	#Interpolate as a function of wavelength
+	# Interpolate as a function of wavelength
 	trans_interp = interp1d(data[:, 0], data[:, 1],
 				kind='linear', bounds_error=False, fill_value=0.)
-	#Obtain values for datacube wavelength array
+	# Obtain values for datacube wavelength array
 	cube_trans = trans_interp(wavels)*scaling
 	
 	
@@ -83,23 +82,22 @@ def load_transmission_curve(wavels, filename, show_plot, plot_file, plot_label, 
 
 
 def get_background_emission(wavels, T, emissivity, DIT, show_plot, plot_file, plot_label):
-	'''Function that calculates the background emission
-	using emissivity and the Plank BB function.
+	'''
+	Function that calculates the background emission using emissivity and the Plank BB function.
 	Emissivity modelled as a graybody with eps*BB(T)
-	
-	Inputs:
-		wavels: array of wavelengths for datacube
-		T: temperature [K]
-		emissivity: emissivity typically modelled as 1 - reflectivity
-		DIT: exposure time [s].
-		show_plot: plot curve. True/False
-		plot_file: vector with the name of the debug plot
-		plot_label: y label of the plot
-		
-	Outputs:
-		bg_spec_ph: array of total background emission
-			[units of photons/m^2/um/arcsec^2]
-			for each wavelength value in wavels
+
+	Args:
+		wavels (array): Array of wavelengths for datacube
+		T (float): Temperature [K]
+		emissivity (array): Emissivity typically modelled as 1 - reflectivity
+		DIT (float): Exposure time [s]
+		show_plot (bool): Plot curve. True/False
+		plot_file (str): Name of the debug plot
+		plot_label (str): Y label of the plot
+
+	Returns:
+		bg_spec_ph (array): Array of total background emission [units of photons/m^2/um/arcsec^2]
+							for each wavelength value in wavels
 	'''
 	
 	cube_bb_spec = blackbody(wavels, T)

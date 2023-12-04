@@ -8,20 +8,18 @@ import matplotlib.pylab as plt
 from scipy.interpolate import interp2d
 
 def apply_adr(cube, header, wave, T, am, correct=False, debug_plots=False, output_file=""):
-	''' calculates the differential refration in MILLI-ARCSEC
-	across the wavelength range provided given the refractive
-	index and airmass.
+	'''
+	Calculates the differential refraction in milli-arcseconds across the wavelength range provided given the refractive index and airmass.
 
-	INPUTS:
+	Args:
 		cube: data cube
 		header: data cube header
-		wave:       wavelength axis, in microns
-		T:      temperature (Kelvin)
-		am:         airmass, unitless (= sec z)
+		wave: wavelength axis, in microns
+		T: temperature (Kelvin)
+		am: airmass, unitless (= sec z)
 		correct: if True, correct for ADR in the data cube
-		debug_plots: Produce debug plots
-		output_file: File name for debug plots
-
+		debug_plots: produce debug plots
+		output_file: file name for debug plots
 	'''
 	
 	refr = calc_ref(wave, T)
@@ -60,76 +58,86 @@ def apply_adr(cube, header, wave, T, am, correct=False, debug_plots=False, outpu
 
 
 def calc_ref(l, T, rh=0.1, P=760.0):
-	'''This function calculates the refractive index of air vs. wavelength.
-	ppwv derived from relative humidity RH, saturation
-	pressure of water ps, and temperature T. Default values for RH and P
-	from Kendrew et al. 2008.
-	EQUATIONS:
+    """
+    This function calculates the refractive index of air vs. wavelength.
+    The partial pressure of water vapor (ppwv) is derived from relative humidity (RH),
+    saturation pressure of water (ps), and temperature (T).
+    Default values for RH and P are from Kendrew et al. 2008.
 
-	RH = ppwv / ps
-	ps = 6.11 * exp([17.27 * T] / [T + 237.3]) [millibar] for T in deg C.
-	Reference: VDF-TRE-IOA-00009-0003 by Dafydd Wyn Evans, 2004, http://casu.ast.cam.ac.uk/documents/wfcam/astrometry/refractir.pdf
+    Equations:
+    RH = ppwv / ps
+    ps = 6.11 * exp([17.27 * T] / [T + 237.3]) [millibar] for T in deg C.
+    Reference: VDF-TRE-IOA-00009-0003 by Dafydd Wyn Evans, 2004, http://casu.ast.cam.ac.uk/documents/wfcam/astrometry/refractir.pdf
 
-	INPUTS:
-	l:      wavelength axis (microns)
-	T:      temperature (Kelvin)
-	rh:     relative humidity (fraction)
-	P:      atmospheric pressure (millibar)
+    Args:
+		l: wavelength axis (microns)
+		T: temperature (Kelvin)
+		rh: relative humidity (fraction)
+		P: atmospheric pressure (millibar)
 
-	OUTPUT:
-	refractive index of air on the provided wavelength scale'''
+    Returns:
+    	nout: refractive index of air on the provided wavelength scale
+    """
 
-	Tc = T-273.15
-	ppwv = rh * 6.11 * np.exp((17.27 * Tc) / (Tc + 237.3))
+    Tc = T - 273.15
+    ppwv = rh * 6.11 * np.exp((17.27 * Tc) / (Tc + 237.3))
 
-	# Ps = 1013.25
-	Ps = 1000.0#When using mbar units --> Reference: VDF-TRE-IOA-00009-0003 by Dafydd Wyn Evans, 2004
-	Ts = 288.15
+    # Ps = 1013.25
+    Ps = 1000.0  # When using mbar units --> Reference: VDF-TRE-IOA-00009-0003 by Dafydd Wyn Evans, 2004
+    Ts = 288.15
 
-	nout = 1 + ( 64.328 + (29498.1)/(146.0 - l**(-2)) + (255.4)/(41 - l**(-2)) )\
-		* ((P*Ts)/(Ps*T)) * 1e-6 - 43.49 * (1.0 - (7.956e-3)/l**2)*(ppwv/Ps) * 1e-6
+    nout = 1 + (64.328 + (29498.1) / (146.0 - l ** (-2)) + (255.4) / (41 - l ** (-2))) \
+	    * ((P * Ts) / (Ps * T)) * 1e-6 - 43.49 * (1.0 - (7.956e-3) / l ** 2) * (ppwv / Ps) * 1e-6
 
-	return nout
+    return nout
 
 def calc_adr(wave, n, am, optlam):
+	"""
+	Calculates the differential refraction in MILLI-ARCSEC across the wavelength range provided given the refractive index and airmass.
 
-	''' calculates the differential refration in MILLI-ARCSEC
-	across the wavelength range provided given the refractive
-	index and airmass.
-
-	INPUTS:
-	wave:       wavelength axis, in microns
-	n:          refractive index, unitless (must have same length as wave)
-	am:         airmass, unitless (= sec z)
-	optlam:     guiding wavelength, in microns
-	'''
+	Args:
+		wave: wavelength axis, in microns
+		n: refractive index, unitless (must have same length as wave)
+		am: airmass, unitless (= sec z)
+		optlam: guiding wavelength, in microns
+  
+	Returns:
+		diffref: differential refraction in milli-arcsec
+	"""
 
 	wavearg = np.where(wave > optlam)[0][0]
 	nc = n[wavearg]
-	#print 'Guiding wavelegth: %.3f' % optlam
+	# print 'Guiding wavelegth: %.3f' % optlam
 
-	z = np.arccos(1./am)
+	z = np.arccos(1. / am)
 
-	diffref = 206265. * 1.e3 * ((n**2-1.0)/(2.0*n**2) - (nc**2-1.0)/(2.*nc**2)) * np.tan(z)
+	diffref = 206265. * 1.e3 * ((n ** 2 - 1.0) / (2.0 * n ** 2) - (nc ** 2 - 1.0) / (2. * nc ** 2)) * np.tan(z)
 
 	return diffref
 
 
+def optimalguide(wave0, wave1, temp):
+	"""
+	Calculates the optimal guiding wavelength for given end wavelengths.
 
-def optimalguide(wave0, wave1, temp) :
-	'''
-	Calculates the optimal guiding wavelength for to given end wavelengths
-	'''
+	Args:
+		wave0: starting wavelength, in microns
+		wave1: ending wavelength, in microns
+		temp: temperature (Kelvin)
 
-	# Only need to work with refractive index, as that's the only wavelength dependant term
+	Returns:
+		waveg: optimal guiding wavelength, in microns
+	"""
+
+	# Only need to work with refractive index, as that's the only wavelength dependent term
 
 	nLow = calc_ref(wave0, temp)
 	nHigh = calc_ref(wave1, temp)
-	nMid = nLow + (nHigh-nLow)/2.0
+	nMid = nLow + (nHigh - nLow) / 2.0
 
 	# iterate to find the optimal wavelength
 
-	diff=0.0
+	diff = 0.0
 	dw = wave1-wave0
 	waveg = wave0 + (wave1-wave0)/2.0
 

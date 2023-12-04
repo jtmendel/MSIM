@@ -32,58 +32,67 @@ hc_path = path_setup('../../' + config_data["data_dir"] + 'HC/')
 #Programme pour prendre en compte la multi-analyse les geometries
 #d'etoiles et la postion de la galaxie
 def psd_to_psf(psd, pup, D, phase_static = None, samp = None, fov = None, lamb = 2.2*1.e-6, jitter=0.):
-	#;FUNCTION psd_to_psf, dsp, pup, local_L, osamp
-	#;; computation of a PSF from a residual phase PSD and a pupil shape
-	#;;PSD: 2D array with PSD values (in nm2 per freq at the PSF wavelength)
-	#;;pup: 2D array representing the pupill
-	#;;Samp: final PSF sampling (number of pixel in the diffraction). Min = 2 !
-	#;;FoV  : PSF FoV (in arcsec)
-	#;;lambda : PSF wavelength in m
-	#;;D = pupil diameter
-	#;;phase_static in nm
-	#;-
+	"""
+	Computes the Point Spread Function (PSF) from a residual phase Power Spectral Density (PSD) and a pupil shape.
+
+	Args:
+		psd (ndarray): 2D array with PSD values (in nm^2 per frequency at the PSF wavelength).
+		pup (ndarray): 2D array representing the pupil.
+		D (float): Pupil diameter.
+		phase_static (ndarray, optional): Static phase in nm. Defaults to None.
+		samp (float, optional): Final PSF sampling (number of pixels in the diffraction). Min = 2! Defaults to None.
+		fov (float, optional): PSF Field of View (in arcsec). Defaults to None.
+		lamb (float, optional): PSF wavelength in meters. Defaults to 2.2*1.e-6.
+		jitter (float, optional): Gaussian jitter in pixels. Defaults to 0.
+
+	Returns:
+		ndarray: The computed PSF.
+
+	Raises:
+		HSIMError: If the PSD horizon is not at least two times larger than the pupil diameter.
+		HSIMError: If overFoV != 1 (not fully tested).
+
+	"""	
+ 
+	dim = psd.shape[0]
+	npup = pup.shape[0]
 	
-	dim       = psd.shape[0]
-	npup      = pup.shape[0]
-	
-	sampnum   = float(dim)/npup   #;numerical sampling related to PSD vs pup dimension
-	L         = D*sampnum #;Physical size of the PSD
+	sampnum = float(dim)/npup # numerical sampling related to PSD vs pup dimension
+	L = D*sampnum # Physical size of the PSD
 	
 	if dim < 2*npup:
 		raise HSIMError("the PSD horizon must at least two time larger than the pupil diameter")
 	
-
 	convnm = (2*np.pi/(lamb*1e9)) # nm to rad
 
-	#;; from PSD to structure function
-	Bg        = np.fft.fft2(np.fft.fftshift(psd)*convnm**2)/L**2
+	# from PSD to structure function
+	Bg = np.fft.fft2(np.fft.fftshift(psd)*convnm**2)/L**2
 	
-	##;;creation of the structure function
-	Dphi      = np.real(2*(Bg[0, 0]-Bg))
-	Dphi      = np.fft.fftshift(Dphi)
+	# creation of the structure function
+	Dphi = np.real(2*(Bg[0, 0]-Bg))
+	Dphi = np.fft.fftshift(Dphi)
 
 	if samp is not None:
 		sampin = samp
 	else:
 		sampin = sampnum
 	
-
 	if float(sampin) <= sampnum:
-		dimnum   =  float(int(dim*(sampin/sampnum)/2)*2) #; even dimension of the num psd
-		sampout =  dimnum/npup                  #;real sampling
-		Dphi2     = Dphi[int(dim/2-sampout*npup/2):int(dim/2+sampout*npup/2),int(dim/2-sampout*npup/2):int(dim/2+sampout*npup/2)]
+		dimnum = float(int(dim*(sampin/sampnum)/2)*2) # even dimension of the num psd
+		sampout = dimnum / npup # real sampling
+		Dphi2 = Dphi[int(dim/2-sampout*npup/2):int(dim/2+sampout*npup/2),int(dim/2-sampout*npup/2):int(dim/2+sampout*npup/2)]
 		#print 'input sampling = ', str(sampin) , ' ---  output sampling = ', str(sampout),' --- max num sampling = ', str(sampnum)
 	else:
-		dimnum   =  float(int(dim*(sampin/sampnum)/2)*2) #; even dimension of the num psd
-		sampout =  dimnum/npup
+		dimnum = float(int(dim*(sampin/sampnum)/2)*2) # even dimension of the num psd
+		sampout = dimnum/npup
 		Dphi2 = np.zeros((int(dimnum), int(dimnum)))+(Dphi[0,0]+Dphi[int(dim)-1, int(dim)-1]+Dphi[0, int(dim)-1]+Dphi[int(dim-1), 0])/4.
-		Dphi2[int(dimnum/2-dim/2):int(dimnum/2+dim/2),int(dimnum/2-dim/2):int(dimnum/2+dim/2)]     = Dphi
+		Dphi2[int(dimnum/2-dim/2):int(dimnum/2+dim/2),int(dimnum/2-dim/2):int(dimnum/2+dim/2)] = Dphi
 		#print 'WARNING : Samplig > Dim DSP / Dim pup => extrapolation !!! We rceommmend to increase the PSD size'
 		#print 'input sampling = ', str(sampin) , ' ---  output sampling = ', str(sampout),' --- max num sampling = ', str(sampnum)
 
 	
-	#;increasing the FoV PSF means oversampling the pupil
-	FoVnum    =  1./2.*(lamb/(sampnum*D))*dim/(4.85*1.e-6)
+	# increasing the FoV PSF means oversampling the pupil
+	FoVnum = 1./2.*(lamb/(sampnum*D))*dim/(4.85*1.e-6)
 	if fov is None:
 		fov = FoVnum
 	
@@ -129,7 +138,7 @@ def psd_to_psf(psd, pup, D, phase_static = None, samp = None, fov = None, lamb =
 		#print 'Warning : Potential alisiang issue .. I recommend to create initial PSD and pupil with a larger numbert of pixel'
 
 
-	##;creation of a diff limited OTF (pupil autocorrelation)
+	# creation of a diff limited OTF (pupil autocorrelation)
 	tab = np.zeros((int(dimover), int(dimover)), dtype=complex)
 	if phase_static is None:
 		tab[0:pupover.shape[0], 0:pupover.shape[1]] = pupover
@@ -137,17 +146,17 @@ def psd_to_psf(psd, pup, D, phase_static = None, samp = None, fov = None, lamb =
 		tab[0:pupover.shape[0], 0:pupover.shape[1]] = pupover*np.exp(1j*phase_static_o*2*np.pi/lamb)
 	
 
-	dlFTO     = np.real(np.fft.ifft2(np.abs(np.fft.fft2(tab))**2))
-	dlFTO     = np.fft.fftshift(np.abs(dlFTO)/np.sum(pup))
+	dlFTO = np.real(np.fft.ifft2(np.abs(np.fft.fft2(tab))**2))
+	dlFTO = np.fft.fftshift(np.abs(dlFTO)/np.sum(pup))
 	
-	##;creation of AO OTF
+	# creation of AO OTF
 	aoFTO     = np.exp(-Dphi2/2.)
 	
-	##;;Computation of final OTF
+	# Computation of final OTF
 	sysFTO = aoFTO*dlFTO
 	sysFTO = np.fft.fftshift(sysFTO)
 
-	## add Gaussian jitter
+	# add Gaussian jitter
 	if np.sum(jitter) > 0.:
 		sigmax = 1./(2.*np.pi*jitter[0])*sysFTO.shape[0]
 		sigmay = 1./(2.*np.pi*jitter[1])*sysFTO.shape[1]
@@ -175,7 +184,7 @@ def psd_to_psf(psd, pup, D, phase_static = None, samp = None, fov = None, lamb =
 		#sysFTO = np.fft.fftshift(sysFTO_tmp)
 		
 	
-	##;;Computation of final PSF
+	# Computation of final PSF
 	sysPSF = np.real(np.fft.fftshift((np.fft.fft2(sysFTO))))
 	sysPSF = sysPSF/np.sum(sysPSF) #normalisation to 1
 
@@ -210,7 +219,8 @@ def set_jitter(_jitter):
 def define_psf(input_parameters, _jitter, _fov, _psfscale, rotation=None):
 	'''
 	Define parameters used for the PSF generation
-	Inputs:
+
+	Args:
 		input_parameters:
 			ao_mode: AO mode LTAO, SCAO, Airy, user
 			ao_star_hmag: H magnitude of the LTAO AO star
@@ -223,7 +233,7 @@ def define_psf(input_parameters, _jitter, _fov, _psfscale, rotation=None):
 		fov: number of pixels of the PSF
 		psfscale: pixel size for the PSF [mas]
 		
-	Outputs:
+	Returns:
 		None
 	'''
 	global pup, stats, psd, xgrid_out, ygrid_out, jitter, psfscale, fov, diameter, AO_mode, rotation_angle
@@ -378,6 +388,7 @@ def define_psf(input_parameters, _jitter, _fov, _psfscale, rotation=None):
 		with open(tiptopini, 'r') as file :
 			filedata = file.read()
 
+		#TODO: change these to MAVIS?
 		mci_grating_w = {'V+R':0.639e-6, # in meters
 			'Iz+J':1.0885e-6,
 			'H+K':2.20e-6,
@@ -494,10 +505,12 @@ def define_psf(input_parameters, _jitter, _fov, _psfscale, rotation=None):
 def create_psf(lamb, Airy=False):
 	'''
 	Returns a cube with the PSF for the given lambs generated from the PSD
-	Inputs:
+ 
+	Args:
 		lamb: lambda  [um]
 		Airy: calculate Airy pattern
-	Outputs:
+	
+ 	Returns:
 		cube: PSF
 	'''
 		
