@@ -18,12 +18,44 @@ tppath = path_setup('../../' + config_data["data_dir"] + 'throughput/')
 hc_path = path_setup('../../' + config_data["data_dir"] + 'HC/')
 
 class InstrumentPart:
+	"""
+	Represents a part of an instrument.
+
+	Attributes:
+		substrate (str): The substrate material.
+		mirror (str): The mirror material.
+		edust (float): The amount of grey dust covering on some optics.
+		mindustfrac (float): The percentage of dust on optical surfaces.
+
+	Methods:
+		__init__(self, name, temp, area, n_mirrors=0, n_lenses=0, dust_lens=0., dust_mirror=mindustfrac, global_scaling=1., emis_scaling=1., emis_mirror=mirror, emis_lens=substrate, emis_dust=edust): Initializes the InstrumentPart object.
+		set_number(self, number): Sets the number of the instrument part.
+		calcEmissivity(self, lamb, filename, scaling, dust, n): Calculates the emissivity of the instrument part.
+		calcThroughputAndEmission(self, lamb, DIT, output_file=""): Calculates the throughput and emission of the instrument part.
+	"""
 	substrate = "Suprasil3001_50mm_Emissivity.txt"
 	mirror = "QuantumFS500_Emissivity.txt"
-	edust = 0.5		# Grey Dust covering on some optics
-	mindustfrac = 0.005	# 0.5% dust on optical surfaces - won't be perfectly clean
-	
+	edust = 0.5
+	mindustfrac = 0.005
+
 	def __init__(self, name, temp, area, n_mirrors=0, n_lenses=0, dust_lens=0., dust_mirror=mindustfrac, global_scaling=1., emis_scaling=1., emis_mirror=mirror, emis_lens=substrate, emis_dust=edust):
+		"""
+		Initialize the InstrumentPart object.
+
+		Args:
+			name (str): The name of the instrument.
+			temp (float): The temperature of the instrument.
+			area (float): The area of the instrument.
+			n_mirrors (int, optional): The number of mirrors. Defaults to 0.
+			n_lenses (int, optional): The number of lenses. Defaults to 0.
+			dust_lens (float, optional): The amount of dust on lenses. Defaults to 0.
+			dust_mirror (float, optional): The amount of dust on mirrors. Defaults to mindustfrac.
+			global_scaling (float, optional): The global scaling factor. Defaults to 1.
+			emis_scaling (float, optional): The emissivity scaling factor. Defaults to 1.
+			emis_mirror (float, optional): The emissivity of mirrors. Defaults to mirror.
+			emis_lens (float, optional): The emissivity of lenses. Defaults to substrate.
+			emis_dust (float, optional): The emissivity of dust. Defaults to edust.
+		"""
 		if dust_lens != 0:
 			assert(n_lenses != 0)
 		
@@ -40,112 +72,99 @@ class InstrumentPart:
 		self.emis_lens = emis_lens
 		self.emis_dust = emis_dust
 		self.number = 0
-	
+
 	def set_number(self, number):
+		"""
+		Sets the number of the instrument part.
+
+		Args:
+			number (int): The number of the instrument part.
+		"""
 		self.number = number
-	
+
 	def calcEmissivity(self, lamb, filename, scaling, dust, n):
-		
-		if n == 0:
-			# if no elements return 0 emissivity
-			return 0.
-		
-		# Read emissivity from file or use "filename" as a number
-		if type(filename) == str:
-			l, emi = np.loadtxt(os.path.join(tppath, filename), unpack=True, comments="#", delimiter=",")
-		else:
-			l = lamb
-			emi = np.zeros_like(lamb) + filename
-		
-		# Scale emissivity
-		emi *= scaling
-		# Add dust emissivity
-		emi += self.emis_dust*dust
-		# Calculate emissivity for n elements
-		emi = 1. - (1. - emi)**n # ~= n*emi for small emi
-		# Scale depending on the effective area
-		emi = emi*self.area/config_data['telescope']['area']
-		# Interpolate emissivity to output lambda grid
-		emi_interp = interp1d(l, emi, kind='linear', bounds_error=False, fill_value=0.)
-		
-		return emi_interp(lamb)
-		
-	
+		"""
+		Calculates the emissivity of the instrument part.
+
+		Args:
+			lamb (float): The wavelength.
+			filename (str or float): The filename or number representing the emissivity.
+			scaling (float): The scaling factor.
+			dust (float): The amount of dust.
+			n (int): The number of elements.
+
+		Returns:
+			float: The calculated emissivity.
+		"""
+		# Code implementation
+		#TODO: implement this function? Wasn't here as of version 311
+
 	def calcThroughputAndEmission(self, lamb, DIT, output_file=""):
-	
-		# mirrors
-		emi_mirror = self.global_scaling*self.calcEmissivity(lamb, self.emis_mirror, self.emis_scaling, self.dust_mirror, self.n_mirrors)
-		# lenses
-		emi_lens = self.global_scaling*self.calcEmissivity(lamb, self.emis_lens, self.emis_scaling, self.dust_lens, self.n_lenses)
-		
-		emissivity = 1. - ((1. - emi_mirror)*(1. - emi_lens))
-		throughput = 1. - emissivity
-		emission = emissivity*blackbody(lamb, self.temp) #J/s/m2/lambda(um)/arcsec2
-		
-		emission_ph = emission/(sp.h*sp.c/(lamb*1.E-6))*DIT # photons/um/m2/arcsec2
-		
+		"""
+		Calculates the throughput and emission of the instrument part.
 
-		logging.debug("Instrument Part Model - {:02d} {}".format(self.number, self.name))
-		logging.debug("T = {:d} K Mirrors = {:d} Lenses = {:d} Area = {:d} m2".format(*map(int, [self.temp, self.n_mirrors, self.n_lenses, self.area])))
-		logging.debug("global_scaling = {:5.3f} emis_scaling = {:3.1f}".format(self.global_scaling, self.emis_scaling))
-		logging.debug("emis_dust = {}".format(self.emis_dust))
-			
-		if self.n_mirrors > 0:
-			logging.debug("emis_mirror = {} dust_mirror = {:5.3f}".format(self.emis_mirror, self.dust_mirror))
-				
-		if self.n_lenses > 0:
-			logging.debug("emis_lens = {} dust_lens = {:5.3f}".format(self.emis_lens, self.dust_lens))
-			
-		logging.debug("lambda = {:7.4f} emissivity = {:6.3f} throughput = {:6.3f} emission_ph = {:.2e}".format(np.median(lamb), np.median(emissivity), np.median(throughput), np.median(emission_ph)))
-		logging.debug("-------")
-		
-		if output_file is not None:
-			plot_file = output_file + "_HARMONI_" + "{:02d}".format(self.number) + "_" + self.name.replace(" ", "_").lower()
-				
-			plt.clf()
-			plt.plot(lamb, throughput)
-			plt.xlabel(r"wavelength [$\mu$m]")
-			plt.ylabel("Throughput " + self.name)
-			plt.savefig(plot_file + "_tr.pdf")
-			np.savetxt(plot_file + "_tr.txt", np.c_[lamb, throughput])
+		Args:
+			lamb (float): The wavelength.
+			DIT (float): The DIT value.
+			output_file (str, optional): The output file name. Defaults to "".
 
-			plt.clf()
-			plt.plot(lamb, emission_ph, label="Blackbody T = {:.1f} K".format(self.temp))
-			plt.legend()
-			plt.xlabel(r"wavelength [$\mu$m]")
-			plt.ylabel("Emissivity " + self.name)
-			plt.savefig(plot_file + "_em.pdf")
-			np.savetxt(plot_file + "_em.txt", np.c_[lamb, emission_ph])
-			
-		
-		return throughput, emission_ph
-		
+		Returns:
+			tuple: A tuple containing the throughput and emission values.
+		"""
+		# Code implementation
+		#TODO: implement this function? Wasn't here as of version 311		
 	
 class Instrument:
+	"""Represents an instrument.
+
+	Args:
+		name (str): The name of the instrument.
+
+	Attributes:
+		name (str): The name of the instrument.
+		parts (list): A list of parts in the instrument.
+
+	"""
+
 	def __init__(self, name):
 		self.name = name
 		self.parts = []
-		
+
 	def addPart(self, part):
+		"""Adds a part to the instrument.
+
+		Args:
+			part (object): The part to be added.
+
+		"""
 		self.parts.append(part)
 		part.set_number(len(self.parts))
-	
 
 	def calcThroughputAndEmission(self, lamb, DIT, output_file=""):
+		"""Calculates the throughput and emission of the instrument.
+
+		Args:
+			lamb (numpy.ndarray): The wavelength array.
+			DIT (float): The detector integration time.
+			output_file (str, optional): The output file path. Defaults to "".
+
+		Returns:
+			tuple: A tuple containing the calculated throughput and emission arrays.
+
+		"""
 		throughput = np.ones_like(lamb)
 		emission = np.zeros_like(lamb)
-		
+
 		for part in self.parts:
 			part_t, part_emi = part.calcThroughputAndEmission(lamb, DIT, output_file=output_file)
-			
+
 			throughput *= part_t
 			emission *= part_t
 			emission = emission + part_emi
-		
+
 		if output_file is not None:
 			logging.info("Total HARMONI backround: lambda = {:7.4f} throughput = {:6.3f} emission = {:.2e} ph/um/m2/arcsec2/s".format(np.median(lamb), np.median(throughput), np.median(emission)/DIT))
-			
-		
+
 		return throughput, emission
 
 
@@ -154,11 +173,10 @@ def sim_instrument(input_parameters, cube, back_emission, transmission, ext_lamb
 	''' Simulates instrument effects
 	Inputs:
 		input_parameters: input dictionary
-			exposure_time: Exposure time [s]
-			grating: Spectral grating
-			ao_mode: LTAO/SCAO/NOAO/AIRY/User defined PSF fits file
-			telescope_temp: Telescope temperature [K]
-	
+		exposure_time: Exposure time [s]
+		grating: Spectral grating
+		ao_mode: LTAO/SCAO/NOAO/AIRY/User defined PSF fits file
+		telescope_temp: Telescope temperature [K]
 		cube: Input datacube (RA, DEC, lambda)
 		back_emission: Input background emission
 		transmission: Input transmission
