@@ -1,4 +1,6 @@
-'''Front-end code for HARMONI simulator
+''' Reviewed by E Muller 2023-12-04
+
+Front-end code for HARMONI simulator
 This handles the GUI and command line interfaces.
 '''
 
@@ -14,6 +16,16 @@ from src.config import config_data
 
 
 def get_version_number():
+	"""
+	Retrieves the version number of the project.
+
+	This function first tries to retrieve the version number using the `git describe` command.
+	If that fails, it attempts to read the version number from the 'PKG-INFO' file.
+
+	Returns:
+		str: The version number of the project.
+			If the version number cannot be determined, it returns "???".
+	"""
 	try:
 		result = subprocess.run(['git', 'describe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 		version = result.stdout.strip().decode("utf-8")
@@ -26,19 +38,31 @@ def get_version_number():
 	try:
 		dir_path = os.path.dirname(os.path.realpath(__file__))
 		with open(dir_path + '/PKG-INFO') as f:
-			return f.readlines()[2][:-1].split('Version: ')[1]
+			return f.readlines()[2][:-1].split('Version: ')[1] + ", from local info."
 
 	except:
 		return "???"
 
 def get_cpu_count():
+	"""
+	Returns the number of available CPU cores.
+
+	Returns:
+		int: The number of available CPU cores.
+	"""
 	nprocs = mp.cpu_count() - 1
 	if nprocs <= 0:
 		nprocs = 1
 	return nprocs
 
 def get_grating_list():
-	
+    #TODO: Modify this function or the config file for the MAVIS specs
+	"""
+	Get the list of gratings based on their resolution.
+
+	Returns:
+		list: A list of grating names sorted by their resolution.
+	"""
 	# Build grating list from the config file
 	gr_low = []
 	gr_mid = []
@@ -50,8 +74,8 @@ def get_grating_list():
 			gr_mid.append((gr_name, gr_data.lmin))
 		else:
 			gr_high.append((gr_name, gr_data.lmin))
-	
-	# sort by wavelenght
+
+	# sort by wavelength
 	gr_low = sorted(gr_low, key=lambda x: x[1])
 	gr_mid = sorted(gr_mid, key=lambda x: x[1])
 	gr_high = sorted(gr_high, key=lambda x: x[1])
@@ -291,6 +315,7 @@ if __name__ == "__main__":
 					try:
 						filename = filedialog.askopenfilename(filetypes = (("FITS files","*.fits"),("all files","*.*")))
 						self.input_cube.set(os.path.relpath(filename))
+						self.input_cube.config(text='Hello!')
 					except:
 						pass
 				def browse_dir(self):
