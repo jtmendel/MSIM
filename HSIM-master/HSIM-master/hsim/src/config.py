@@ -1,6 +1,11 @@
 '''File that stores hardwired data for use in HARMONI
 simulation pipeline. Data stored in dictionary format
 with keywords.
+
+CHANGELOG:
+10-12-2023 - E. Muller - Updated to MAVIS quantities for saturation, renamed from HARMONI prefix to MAVIS prefix for variables, removed nominal grating values, removed minimum compliant instrument values
+#TODO: fill in the changelog
+
 '''
 import logging
 import collections
@@ -8,37 +13,28 @@ import sys
 
 GratingInfo = collections.namedtuple('GratingInfo', 'lmin, lmax, R')
 SpaxelScaleInfo = collections.namedtuple('SpaxelScaleInfo', 'xscale, yscale, psfscale, psfsize')
-	
-config_data = {#TODO: keep only one of them?
+
+
+config_data = {
+    # CHANGELOG: 13-12-2023 - Removed best, worst, and contractual values, updated avg values.
+    # CHANGELOG: 19-12-2023 - Updated read noise and dark current values after meeting.
 	'detector':{
 		"avg":{
-			'read_noise': {"vis":2.0, "nir":6.0, "nir_lowexp":15.0}, # e/pix
-			'dark_current': {"vis":0.00042, "nir":0.0053}, # e/pix/s
-			'qe':'file',
-		},
-		"best":{
-			'read_noise': {"vis":2.0, "nir":4.0, "nir_lowexp":10.0}, # e/pix
-			'dark_current': {"vis":0.00042, "nir":0.0042}, # e/pix/s
-			'qe':{"w":[0.9, 1.2, 2.0], "qe":[0.85, 0.90, 0.95]},
-		},
-		"worst":{
-			'read_noise': {"vis":2.0, "nir":8.0, "nir_lowexp":12.0}, # e/pix
-			'dark_current': {"vis":0.00042, "nir":0.0220}, # e/pix/s
-			'qe':{"w":[0.9, 1.2, 2.0], "qe":[0.70, 0.80, 0.90]},
-		},
-		"contractual":{
-			'read_noise': {"vis":2.0, "nir":30.0, "nir_lowexp":30.0}, # e/pix
-			'dark_current': {"vis":0.00042, "nir":0.1}, # e/pix/s
-			'qe':{"w":[0.9, 1.2, 2.0], "qe":[0.50, 0.50, 0.50]},
+			'read_noise': {"vis":3.0}, # e/pix # CHANGELOG: 19-12-2023 - Updated to 3e-, this is likely the value MAVIS will operate at given the science observation frequency
+			'dark_current': {"vis":3/60/60}, # CHANGELOG: 19-12-2023 - Updated to 3e-, this is likely the value given MAVIS will be cooled to lower than -100C as in the CCD Spec sheet
+			'qe':'file', #TODO: update these files to those for mavis.
 		},
 	},
 	
-	'saturation': {"vis":72000., "nir":30000.}, # e
+	# CHANGELOG: 10-12-2023 - Removed nir, updated vis value. Using the average value from CCD spec sheet
+	'saturation': {"vis":90000.}, # e
 	
 	'crosstalk': 0.02, # fraction of photons going to each of the 4 contiguous pixels
-	'side_length':4096, #TODO:
-	'N_IR_det':8, #TODO:
+	#TODO: leave crosstalk as is for now, can be updated later.
+	'side_length':4096, #TODO: figure out how to deal with this as we have different side lengths
+	'N_IR_det':8, #TODO: remove, do we need a vis value?
 
+	# JESSE, TREVOR: Any insight into these values and what they are?
 	#Detector systematics parameters
 	'systematics': {"rd":2.845,
                         "rd_lowexp":12.0,
@@ -55,60 +51,40 @@ config_data = {#TODO: keep only one of them?
                         "force_new":False
                         },
                         
+    # JESSE, TREVOR: Any insight into these values?
 	'spectral_sampling':{"output":2.2, "internal":4.}, # spectral sampling of the output cube and internal. Nyquist = 2
 	'LSF_kernel_size':12., # LSF kernel size in sigma units
 	
-	'telescope': {'diameter':37., 'area':980.0}, #diam [m], area [m^2] #TODO: update for VLT not ELT
+	# CHANGELOG: 19-12-2023 - Updated to the VLT values
+	#TODO: Should these be values including or excluding the central cut-out? For the ELT it had values of 38.0 and 980.0
+	'telescope': {'diameter':8.2, 'area':211.24}, #diam [m], area [m^2], excluding centre hole
 	
-	'HARMONI_FPRS_temp': +2., # C
-	'HARMONI_cryo_temp': 130., # K
+	# CHANGELOG: 10-12-2023 - Renamed from HARMONI prefix
+	'MAVIS_FPRS_temp': +2., # C #TODO: find where this is referenced, as we have changed from HARMONI prefix to MAVIS prefix for variable
+	'MAVIS_cryo_temp': 130., # K #TODO: find where this is referenced, as we have changed from HARMONI prefix to MAVIS prefix for variable
 	
 	'data_dir':"sim_data/",
 	
-	#  HRM-00244 #TODO: update these
-	'gratings': {	#low resolution
-			'V+R':GratingInfo(0.458, 0.8200, 3100.),
-			'Iz+J':GratingInfo(0.811, 1.369, 3355.),
-			'H+K':GratingInfo(1.450, 2.450, 3355.),
-			# med-resolution
-			'Iz':GratingInfo(0.830, 1.050, 7104.),
-			'J':GratingInfo(1.046, 1.324, 7104.),
-			'H':GratingInfo(1.435, 1.815, 7104.),
-			'K':GratingInfo(1.951, 2.469, 7104.),
-			# high-resolution
-			'z-high':GratingInfo(0.828, 0.902, 17385.),
-			'J-short':GratingInfo(1.012, 1.102, 17385.),
-			'J-long':GratingInfo(1.098, 1.189, 17385.),
-			'H-high':GratingInfo(1.538, 1.678, 17385.),
-			'K-short':GratingInfo(2.017, 2.201, 17385.),
-			'K-long':GratingInfo(2.199, 2.400, 17385.)
+	# CHANGELOG: 19-12-2023 - Changed over to MAVIS grating values, from MAVIS-SPEC-REP-0002 V4, Table 1. Note we leave them in um as the HARMONI values
+	'gratings': {
+			'LR-Blue':GratingInfo(0.370, 0.720, 4000.),
+			'LR-Red':GratingInfo(0.510, 0.950, 4000.),
+			'HR-Blue':GratingInfo(0.425, 0.550, 12000.),
+			'HR-Red':GratingInfo(0.630, 0.880, 9000.)
 			},
-	
-	'gratings_nominal': {	#low resolution
-			'V+R':GratingInfo(0.458, 0.8200, 3000.), ##
-			'Iz+J':GratingInfo(0.83, 1.09, 3000.),
-			'H+K':GratingInfo(1.450, 1.925, 3000.),
-			# med-resolution
-			'Iz':GratingInfo(0.830, 0.94, 7000.),
-			'J':GratingInfo(1.05, 1.185, 7000.),
-			'H':GratingInfo(1.45, 1.625, 7000.),
-			'K':GratingInfo(1.97, 2.185, 7000.),
-			# high-resolution
-			'z-high':GratingInfo(0.828, 0.865, 17000.),
-			'J-short':GratingInfo(1.012, 1.102, 17000.), ##
-			'J-long':GratingInfo(1.098, 1.189, 17000.), ##
-			'H-high':GratingInfo(1.538, 1.608, 17000.),
-			'K-short':GratingInfo(2.017, 2.201, 17000.),
-			'K-long':GratingInfo(2.199, 2.300, 17000.)
-			},
-	
-	'spaxel_scale': {'4x4':SpaxelScaleInfo(4., 4., 0.8, 1250),
-		  '10x10':SpaxelScaleInfo(10., 10., 2., 800),
-		  '20x20':SpaxelScaleInfo(20., 20., 4., 580),
-		  '30x60':SpaxelScaleInfo(30., 60., 6., 400),
-		  '60x60':SpaxelScaleInfo(60., 60., 6., 400),
-		  '120x60':SpaxelScaleInfo(120., 60., 6., 400)
-		  },
+	# CHANGELOG: 10-12-2023 - Removed nominal grating values
+	#TODO: see what removing the nominal grating values ('gratings_nominal') does
+
+	# CHANGELOG: 19-12-2023 - Switched to the 25 and 50 mas spaxel sizes. Need to figure out what the values for the psfscale and psfsize. Arbitrary values of 1.0 and 1000.0 have been used for now.
+	'spaxel_scale': { '25x25':SpaxelScaleInfo(25., 25., 1., 1000. ),
+                  '50x50':SpaxelScaleInfo(50., 50., 1., 1000.)
+				#   '4x4':SpaxelScaleInfo(4., 4., 0.8, 1250),
+				#   '10x10':SpaxelScaleInfo(10., 10., 2., 800),
+				#   '20x20':SpaxelScaleInfo(20., 20., 4., 580),
+				#   '30x60':SpaxelScaleInfo(30., 60., 6., 400),
+				#   '60x60':SpaxelScaleInfo(60., 60., 6., 400),
+				#   '120x60':SpaxelScaleInfo(120., 60., 6., 400)
+				  },
 	
 	
 	#FWHM of Instrument PSF depending on output spaxel scale in mas
@@ -122,19 +98,10 @@ config_data = {#TODO: keep only one of them?
 		  '60x60':30.,
 		  '120x60':30.
 		},
-#TODO: above will come from optical model	
- 
-	# minimum compliant instrument #TODO: get rid of these
-	'mci_dynamic_instrument_psf': 5.5,
-	'mci_static_instrument_psf': {'4x4': 3.,
-    		  '10x10':14.,
-		  '20x20':28.,
-		  '30x60':135.,
-		  '60x60':135.,
-		  '120x60':135.
-		},
+#TODO: above will come from optical model
+	# CHANGELOG: 10-12-2023 - Removed minimum compliant instrument values ('mci_dynamic_instrument_psf' and 'mci_static_instrument_psf')
 
-	#Each PSD file containts 1 seeing  [0.43] and 1 zenith angle [25] #TODO: ask jesse if we need these?
+	# Each PSD file containts 1 seeing  [0.43] and 1 zenith angle [25] #TODO: ask jesse if we need these?
 	'PSD_file':{"LTAO":"psd_ltao_hsim_6LGS_cn2_310.fits", 
 		"SCAO":"psd_SCAO_hsim_6_cn2_310.fits"},
 	'PSD_params':{'air_masses':[1.1, 1.3, 1.5, 2.0],

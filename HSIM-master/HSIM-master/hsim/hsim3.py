@@ -1,7 +1,9 @@
-''' Reviewed by E Muller 2023-12-04
-
-Front-end code for HARMONI simulator
+'''Front-end code for HARMONI simulator
 This handles the GUI and command line interfaces.
+
+CHANGELOG:
+#TODO: fill in the changelog
+
 '''
 
 import os
@@ -32,15 +34,15 @@ def get_version_number():
 		if version[0] == "v":
 			version = version[1:]
 		return version
-	except:
+	except Exception:
 		pass
-	
+
+
 	try:
 		dir_path = os.path.dirname(os.path.realpath(__file__))
 		with open(dir_path + '/PKG-INFO') as f:
 			return f.readlines()[2][:-1].split('Version: ')[1] + ", from local info."
-
-	except:
+	except Exception:
 		return "???"
 
 def get_cpu_count():
@@ -91,10 +93,11 @@ if __name__ == "__main__":
 	Parameter = collections.namedtuple("Parameter", "name,help,type,default,choices")
 	Parameter.__new__.__defaults__ = (None, None, str, None, None)
 	
+	#TODO: update all of these where necessary
 	simulation_parameters = [Parameter("input_cube", "FITS input cube"),
 				Parameter("output_dir", "Output directory"),
-				Parameter("grating", "HARMONI grating", choices = get_grating_list()),
-				Parameter("spaxel_scale", "Spaxel Scale", choices = ["4x4", "10x10", "20x20", "30x60", "60x60", "120x60"]),
+				Parameter("grating", "MAVIS grating", choices = get_grating_list()),
+				Parameter("spaxel_scale", "Spaxel Scale", choices = ["25x25", "50x50"]), # CHANGELOG: 19-12-2023 - Changed to only MAVIS spaxel scales
 				Parameter("exposure_time", "Exposure time [s]", type=int),
 				Parameter("n_exposures", "Number of exposures", type=int),
 				Parameter("ao_mode", "AO Mode", choices = ["LTAO", "SCAO", "HCAO", "noAO", "Airy", "User"]),
@@ -110,13 +113,13 @@ if __name__ == "__main__":
 				Parameter("detector_tmp_path", "Directory to save interim detector files", default="''"),
 				Parameter("adr", "Simulate atmospheric differential refraction", default="True", choices = ["True", "False"]),
 				Parameter("mci", "Use minimum compliant instrument parameters", default="False", choices = ["True", "False"]),
-				Parameter("detector", "Near-IR detector performance", default="avg", choices = ["avg", "best", "worst", "contractual"]),
+				Parameter("detector", "Near-IR detector performance", default="avg", choices = ["avg"]), # CHANGELOG: 19-12-2023 - Removed all other options than 'avg', as we have only left this one in the config file.
 				Parameter("telescope_temp", "Telescope temperature [K]", type=float, default = 280),
 				Parameter("fprs_temp", "FPRS temperature [C]", type=float, default = +2),
 				Parameter("scattered_sky", "Scattered sky fraction [%%]", type=float, default = 20),
 				Parameter("extra_jitter", "Additional telescope PSF blur [mas]", type=str, default = "0"),
 				Parameter("noise_seed", "Noise random number generator seed", type=int, default = 100),
-				Parameter("n_cpus", "Number of processors", type=int, default = get_cpu_count()),
+				Parameter("n_cpus", "Number of processors", type=int, default = 1), # CHANGELOG: 19-12-2023 - Set default to 1, as it was breaking the program
 				Parameter("spectral_sampling", "Internal spectral oversampling factor", type=float, default = -1),
 				Parameter("spatial_sampling", "Internal spatial oversampling factor", type=float, default = -1),
 			  ]
@@ -331,10 +334,11 @@ if __name__ == "__main__":
 				create_field("exposure_time", panel_instrument.add_field("Exposure time [s]", Entry, default=600))
 				create_field("n_exposures", panel_instrument.add_field("Number of exposures", Entry, default=3))
 				spaxel_choices = list(parameter_actions["spaxel_scale"].choices)
-				create_field("spaxel_scale", panel_instrument.add_field("Spaxel scale [mas]", OptionMenu, extra=spaxel_choices, default=spaxel_choices[1]))
+				create_field("spaxel_scale", panel_instrument.add_field("Spaxel scale [mas]", OptionMenu, extra=spaxel_choices, default=spaxel_choices[0])) # CHANGELOG: 19-12-2023 - changed default scale choice
 	
-				grating_choices = ["{name} [{info.lmin:.2f}-{info.lmax:.2f} um] (R={info.R:.0f})".format(name=_, info=config_data["gratings"][_]) for _ in get_grating_list()]
-				create_field("grating", panel_instrument.add_field("Grating", OptionMenu, extra=grating_choices, default=grating_choices[6]))
+				# grating_choices = ["{name} [{info.lmin:.3f}-{info.lmax:.3f} nm] (R={info.R:.0f})".format(name=_, info=config_data["gratings"][_]) for _ in get_grating_list()]
+				grating_choices = ["{name} [{lmin:.1f}-{lmax:.1f} nm] (R={R:.0f})".format(name=_,lmin=config_data["gratings"][_].lmin * 1000,lmax=config_data["gratings"][_].lmax * 1000,R=config_data["gratings"][_].R) for _ in get_grating_list()]  # CHANGELOG: 19-12-2023 - Edited formatting to be in nm instead of um
+				create_field("grating", panel_instrument.add_field("Grating", OptionMenu, extra=grating_choices, default=grating_choices[0])) # CHANGELOG: 19-12-2023 - changed default grating choice
 
 				# Telescope frame
 				def browse_psf_file(self):
@@ -373,15 +377,15 @@ if __name__ == "__main__":
 				create_field("adr", panel_misc.add_field("ADR on/off", Checkbutton, default=1, height=1000))
 				create_field("detector_systematics", panel_misc.add_field("Detector systematics", Checkbutton))
 				create_field("detector_tmp_path", panel_misc.add_field("Detector tmp dir", Button, command=lambda : browse_dir(self)))
-				create_field("n_cpus", panel_misc.add_field("No. of processors (1-" + str(mp.cpu_count())+")", Entry))
+				# create_field("n_cpus", panel_misc.add_field("No. of processors (1-" + str(mp.cpu_count())+")", Entry)) # CHANGELOG: 19-12-2023 - Removed this option as it broke the program
 				create_field("noise_seed", panel_misc.add_field("Noise seed", Entry))
 				panel_misc.add_field("Internal oversampling:", None)
 				create_field("spectral_sampling", panel_misc.add_field("   Spectral (default = -1)", Entry))
 				create_field("spatial_sampling", panel_misc.add_field("   Spatial (default = -1)", Entry))
-				create_field("mci", panel_misc.add_field("Minimum compliant instrument", Checkbutton, default=1, height=1000))
+				# create_field("mci", panel_misc.add_field("Minimum compliant instrument", Checkbutton, default=1, height=1000)) # CHANGELOG: 19-12-2023 - Removed this option as unnecessary
 				
-				det_choices = list(parameter_actions["detector"].choices)
-				create_field("detector", panel_misc.add_field("Near-IR detector", OptionMenu, extra=det_choices))
+				# det_choices = list(parameter_actions["detector"].choices)
+				# create_field("detector", panel_misc.add_field("Near-IR detector", OptionMenu, extra=det_choices))
 
 
 				def OnClick():
@@ -401,7 +405,7 @@ if __name__ == "__main__":
 
 
 		root = Tk()
-		root.title("HARMONI Simulator Interface v" + get_version_number())
+		root.title("MAVIS Simulator Interface v" + get_version_number())
 		font_size_title = "helvetica 20 bold"
 		default_font = "helvetica 13"
 		root.option_add("*Font", default_font)
