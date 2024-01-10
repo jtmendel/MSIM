@@ -1,0 +1,2 @@
+# MAVISIM
+MAVIS spectrograph simulator
