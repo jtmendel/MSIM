@@ -1,5 +1,18 @@
 '''
 Calculates detector QE, dark current, read noise
+
+CHANGELOG:
+
+Version 0.0.0 (2023-10-27)
+--------------------------
+- Original HARMONI simulator code
+Developers: Miguel Pereira Santaella, Laurence Routledge, Simon Zieleniewsk, Sarah Kendrew
+
+Version 1.0.0 (2024-01-10)
+--------------------------
+- Removed NIR saturation masking options and NIR detector performance options
+Author: Eric Muller (eric.muller@anu.edu.au)
+
 '''
 import os
 import logging
@@ -19,6 +32,7 @@ from src.modules.em_model import *
 
 detpath = path_setup('../../' + config_data["data_dir"] + 'detectors/')
 
+#TODO: update this function and its child
 #Detector throughput curve generated just using wavelength array.
 def detector_QE_curve(wavels, grating, debug_plots, output_file):
 	'''Function that generates a detector QE curve.
@@ -33,7 +47,7 @@ def detector_QE_curve(wavels, grating, debug_plots, output_file):
 		cube_det_qe: array of detector QE values for
 			each wavelength in array
 	'''
-
+	#TODO: make this use the MAVIS stuff. Add a gui param for the detector choice as MAVIS provides 4 files.
 	if grating == "V+R":
 		detector_QE_file = "Psyche_CCD231-84_ESO_measured_QE.txt"
 	else:
@@ -54,10 +68,14 @@ def mask_saturated_pixels(cube, grating):
 	'''
 	logging.info("Masking saturated pixels")
 	
-	if grating == "V+R":
-		limit = config_data["saturation"]["vis"]
-	else:
-		limit = config_data["saturation"]["nir"]
+	# CHANGELOG 03-01-2024: Just set it to the 'vis' values as we have only included these.
+	limit = config_data["saturation"]["vis"]
+	
+	# CHANGELOG 03-01-2024: Commented this out, see above.
+	# if grating == "V+R":
+	# 	limit = config_data["saturation"]["vis"]
+	# else:
+	# 	limit = config_data["saturation"]["nir"]
 		
 	
 	mask_pixels = cube > limit
@@ -169,37 +187,43 @@ def sim_detector(input_parameters, cube, back_emission, transmission, lambs, deb
 	
 	qe_curve.shape = (len(lambs), 1, 1)
 	cube *= qe_curve
+ 
+	# CHANGELOG 03-01-2024: Just set it to the 'vis' values as we have only included these.
+	read_noise = detector_performance["read_noise"]["vis"]
+	dark = detector_performance["dark_current"]["vis"]
+	
+    # CHANGELOG 03-01-2024: Commented this out, see above.
+	# # read noise
+	# if grating == "V+R":
+	# 	read_noise = detector_performance["read_noise"]["vis"]
+	# else:
+	# 	if DIT <= 120.:
+	# 		read_noise = detector_performance["read_noise"]["nir_lowexp"]
+	# 	else:
+	# 		read_noise = detector_performance["read_noise"]["nir"]
 
-	# read noise
-	if grating == "V+R":
-		read_noise = detector_performance["read_noise"]["vis"]
-	else:
-		if DIT <= 120.:
-			read_noise = detector_performance["read_noise"]["nir_lowexp"]
-		else:
-			read_noise = detector_performance["read_noise"]["nir"]
 
-
-	# dark current
-	if grating == "V+R":
-		dark = detector_performance["dark_current"]["vis"]
-		# dark current increases due to pixel binning
-		if config_data["spaxel_scale"] == "60x60":
-			dark = dark*2
-		elif config_data["spaxel_scale"] == "120x60":
-			dark = dark*4
-	else:
-		dark = detector_performance["dark_current"]["nir"]
+	# # dark current
+	# if grating == "V+R":
+	# 	dark = detector_performance["dark_current"]["vis"]
+	# 	# dark current increases due to pixel binning
+	# 	if config_data["spaxel_scale"] == "60x60":
+	# 		dark = dark*2
+	# 	elif config_data["spaxel_scale"] == "120x60":
+	# 		dark = dark*4
+	# else:
+	# 	dark = detector_performance["dark_current"]["nir"]
+	# TODO: do the different MAVIS pixel scales come from rebinning? If so, need to treat dark current as above
 
 
 	# Thermal emission seen by the detector
 	# 15-micron pixels and F/2 camera... (independent of spaxel scale)
-	pixel_area = 15E-6**2 # m2
+	pixel_area = 15E-6**2 # m2 #TODO: update this to the MAVIS pixel size
 	pixel_solid_cryo_mech = 0.2*(360/2./np.pi*3600.)**2 # arcsec**2
 	pixel_solid_rad = 2.0*np.pi*(360/2./np.pi*3600.)**2 # arcsec**2
 	
-	TCryoMech = config_data["HARMONI_cryo_temp"] - 5.
-	Trad = config_data["HARMONI_cryo_temp"]
+	TCryoMech = config_data["MAVIS_cryo_temp"] - 5.
+	Trad = config_data["MAVIS_cryo_temp"]
 	
 	fcryomech = blackbody(orig_qe_lambda, TCryoMech)/(sp.h*sp.c/(orig_qe_lambda*1.E-6))*pixel_solid_cryo_mech # photons/s/um/m2
 	frad = blackbody(orig_qe_lambda, Trad)/(sp.h*sp.c/(orig_qe_lambda*1.E-6))*pixel_solid_rad # photons/s/um/m2

@@ -1,5 +1,18 @@
 '''
 Rebin 1d and 2d arrays
+
+CHANGELOG:
+
+Version 0.0.0 (2023-10-27)
+--------------------------
+- Original HARMONI simulator code
+Developers: Miguel Pereira Santaella, Laurence Routledge, Simon Zieleniewsk, Sarah Kendrew
+
+Version 1.0.0 (2024-01-10)
+--------------------------
+- Added progress bars to the interpolation processes
+Author: Eric Muller (eric.muller@anu.edu.au)
+
 '''
 
 
@@ -8,6 +21,7 @@ import numpy as np
 #from scipy.interpolate import interp1d
 #from scipy.interpolate import interp2d
 from scipy.integrate import quad
+from tqdm import tqdm # CHANGELOG 09-01-2024: imported for progress bars
 
 def rebin1d(xout, xin, yin):
 	"""
@@ -38,7 +52,7 @@ def rebin1d(xout, xin, yin):
 		
 		in_i = np.interp(xout - dx_out*0.5, xin, range(len(xin)))
 		
-		for i in range(len(xout)):
+		for i in tqdm(range(len(xout))): # CHANGELOG 09-01-2024: added a progress bar
 			rstart = in_i[i]
 			istart = int(rstart)
 			if i < len(xout) - 1:
@@ -86,10 +100,10 @@ def rebin_cube_1d(xout, xin, cube):
 	new_cube = np.zeros((len(xout), cube.shape[1], cube.shape[2]), dtype=float)
 
 	if dx_out < dx_in:
-		# interpolate if output is finer
-		for i in np.arange(0, cube.shape[2]):
+		for i in tqdm(np.arange(0, cube.shape[2])): # CHANGELOG 09-01-2024: added a progress bar
 			for j in np.arange(0, cube.shape[1]):
 				new_cube[:,j,i] = np.interp(xout, xin, cube[:,j,i])
+    
 		
 		return new_cube
 	else:
@@ -98,7 +112,7 @@ def rebin_cube_1d(xout, xin, cube):
 		box = float(dx_out)/float(dx_in)
 		in_i = np.interp(xout - dx_out*0.5, xin, range(len(xin)))
 
-		for i in range(len(xout)):
+		for i in tqdm(range(len(xout))): # CHANGELOG 09-01-2024: added a progress bar
 			rstart = in_i[i]
 			istart = int(rstart)
 			if i < len(xout) - 1:
@@ -116,7 +130,7 @@ def rebin_cube_1d(xout, xin, cube):
 
 			new_cube[i,:,:] = (np.sum(cube[istart:istop+1,:,:], axis=0) - frac1*cube[istart,:,:] - frac2*cube[istop,:,:])/(rstop - rstart)
 
-		
+
 		return new_cube
 
 

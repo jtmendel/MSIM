@@ -1,6 +1,19 @@
 '''
 Reads input FITS data cube and resamples according to the
 grating and spaxel scale. The output cube is in ph/s/m2/um/arcsec2 units
+
+CHANGELOG:
+
+Version 0.0.0 (2023-10-27)
+--------------------------
+- Original HARMONI simulator code
+Developers: Miguel Pereira Santaella, Laurence Routledge, Simon Zieleniewsk, Sarah Kendrew
+
+Version 1.0.0 (2024-01-10)
+--------------------------
+- Changed logging messages to use MAVIS rather than HARMONI
+Author: Eric Muller (eric.muller@anu.edu.au)
+
 '''
 import os
 import logging
@@ -52,10 +65,10 @@ def spectral_res(datacube, head, grating, wavels):
 		input_spec_res = 2.*head['CDELT3']
 	
 	if input_spec_res > new_res:
-		logging.warning("The input cube spectral resolution is lower than the HARMONI grating resolution. Assuming input resolution = HARMONI resolution")
+		logging.warning("The input cube spectral resolution is lower than the MAVIS grating resolution. Assuming input resolution = MAVIS resolution") # CHANGELOG 10-01-2024: Changed text from HARMONI to MAVIS
 		input_spec_res = new_res*0.99
 	elif input_spec_res > 0.5*new_res:
-		logging.warning("The input cube spectral resolution is lower than 2 times the HARMONI grating resolution")
+		logging.warning("The input cube spectral resolution is lower than 2 times the MAVIS grating resolution") # CHANGELOG 10-01-2024: Changed text from HARMONI to MAVIS
 	elif input_spec_res == 0.:
 		logging.warning("The input cube spectral resolution is not defined")
 	

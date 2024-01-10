@@ -1,6 +1,14 @@
 '''
 Calculates the sky transmission and emission at the observed lambda
 and computes the ADR if requested
+
+CHANGELOG:
+
+Version 0.0.0 (2023-10-27)
+--------------------------
+- Original HARMONI simulator code
+Developers: Miguel Pereira Santaella, Laurence Routledge, Simon Zieleniewsk, Sarah Kendrew
+
 '''
 import os
 import logging

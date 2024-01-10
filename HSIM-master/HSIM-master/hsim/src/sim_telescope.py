@@ -1,6 +1,19 @@
-# coding=utf-8
 '''
 Calculates PSF, jitter and telescope background and transmission
+
+CHANGELOG:
+
+Version 0.0.0 (2023-10-27)
+--------------------------
+- Original HARMONI simulator code
+Developers: Miguel Pereira Santaella, Laurence Routledge, Simon Zieleniewsk, Sarah Kendrew
+
+Version 1.0.0 (2024-01-10)
+--------------------------
+- Added a progress bar to the PSF convolution process
+- Removed multi-CPU code
+Author: Eric Muller (eric.muller@anu.edu.au)
+
 '''
 import sys
 import logging
@@ -17,6 +30,8 @@ from src.config import *
 
 from src.modules.create_psf import create_psf, define_psf
 from src.modules.em_model import *
+
+from tqdm import tqdm # CHANGELOG 09-01-2024: Added progress bar
 
 
 def process_lambda(params, lamb, image, px, py, pback):
@@ -167,51 +182,53 @@ def sim_telescope(input_parameters, cube, back_emission, transmission, ext_lambs
 	
 	bar_str = "[ {:2d}% {:" + str(len(str(len(lambs)))) + "d}/{:" + str(len(str(len(lambs)))) + "d} ]"
 	
-	ncpus = input_parameters["n_cpus"]
+	# CHANGELOG 29-12-2023: Removed multiprocessing as it was causing issues with the code 
+	# ncpus = input_parameters["n_cpus"]
 	
-	logging.info(("Using {:d} CPU" + ("s" if ncpus > 1 else "")).format(ncpus))
-	if ncpus > 1:
+	# logging.info(("Using {:d} CPU" + ("s" if ncpus > 1 else "")).format(ncpus))
+	# if ncpus > 1:
 
-		def init_worker():
-			signal.signal(signal.SIGINT, signal.SIG_IGN)
+	# 	def init_worker():
+	# 		signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-		pool = mp.Pool(ncpus, init_worker)
+	# 	pool = mp.Pool(ncpus, init_worker)
 		
-		counter = 0
-		result_cube = np.zeros_like(cube)
-		llambs = len(lambs)
+	# 	counter = 0
+	# 	result_cube = np.zeros_like(cube)
+	# 	llambs = len(lambs)
 		
-		for j in range(0, len(lambs), ncpus):
-			result = []
-			for i in range(j, min([len(lambs), j+ncpus])):
-				result.append(pool.apply_async(process_lambda, args=((i, x0, x1, y0, y1), lambs[i], cube[i, :, :], padding_x, padding_y, padding_back[i]), callback=save_result))
+	# 	for j in range(0, len(lambs), ncpus):
+	# 		result = []
+	# 		for i in range(j, min([len(lambs), j+ncpus])):
+	# 			result.append(pool.apply_async(process_lambda, args=((i, x0, x1, y0, y1), lambs[i], cube[i, :, :], padding_x, padding_y, padding_back[i]), callback=save_result))
 			
 			
-			try:
-				while True:
-					time.sleep(0.5)
-					if all([r.ready() for r in result]):
-						break
+	# 		try:
+	# 			while True:
+	# 				time.sleep(0.5)
+	# 				if all([r.ready() for r in result]):
+	# 					break
 
-			except KeyboardInterrupt:
-				pool.terminate()
-				pool.join()
-
-		
-		pool.close()
-		pool.join()
+	# 		except KeyboardInterrupt:
+	# 			pool.terminate()
+	# 			pool.join()
 
 		
-		cube = result_cube
+	# 	pool.close()
+	# 	pool.join()
 
-	else:
-		for i in range(len(lambs)):
-			sys.stdout.write(bar_str.format(int(100.*i/len(lambs)), i, len(lambs)) + "\r")
-			sys.stdout.flush()
-			#break
-			_, conv_image = process_lambda(i, lambs[i], cube[i, :, :], padding_x, padding_y, padding_back[i])
 		
-			cube[i, :, :] = conv_image[y0:y1, x0:x1]
+	# 	cube = result_cube
+
+	# else:
+	for i in tqdm(range(len(lambs))):
+		# CHANGELOG 09-01-2024: Added progress bar, commented out below
+		# sys.stdout.write(bar_str.format(int(100.*i/len(lambs)), i, len(lambs)) + "\r")
+		# sys.stdout.flush()
+		# #break
+		_, conv_image = process_lambda(i, lambs[i], cube[i, :, :], padding_x, padding_y, padding_back[i])
+	
+		cube[i, :, :] = conv_image[y0:y1, x0:x1]
 	
 	central_lambda = (lambs[0] + lambs[-1])*0.5
 	return (cube, back_emission, transmission), create_psf(central_lambda), central_lambda

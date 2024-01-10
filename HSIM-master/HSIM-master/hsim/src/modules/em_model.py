@@ -1,6 +1,13 @@
-# coding=utf-8
 '''
 Helper functions to model the emissivity
+
+CHANGELOG:
+
+Version 0.0.0 (2023-10-27)
+--------------------------
+- Original HARMONI simulator code
+Developers: Miguel Pereira Santaella, Laurence Routledge, Simon Zieleniewsk, Sarah Kendrew
+
 '''
 import os
 
@@ -58,7 +65,7 @@ def load_transmission_curve(wavels, filename, show_plot, plot_file, plot_label, 
 		cube_trans: array of throughput for each wavelength value in wavels
 	'''
 
-	data = np.genfromtxt(os.path.join(tppath, filename), delimiter=',')
+	data = np.genfromtxt(os.path.join(tppath, filename), delimiter=',', comments='#')
 
 	# Interpolate as a function of wavelength
 	trans_interp = interp1d(data[:, 0], data[:, 1],

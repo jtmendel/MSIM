@@ -1,5 +1,14 @@
-'''Module to calculate and apply atmospheric differential refraction
+'''
+Module to calculate and apply atmospheric differential refraction
 to datacubes.
+
+CHANGELOG:
+
+Version 0.0.0 (2023-10-27)
+--------------------------
+- Original HARMONI simulator code
+Developers: Miguel Pereira Santaella, Laurence Routledge, Simon Zieleniewsk, Sarah Kendrew
+
 '''
 
 from src.modules.rebin import *
