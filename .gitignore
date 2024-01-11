@@ -3,4 +3,4 @@
 *DS_Store
 msim/sim_data/detectors/HARMONI_dets.fits
 
-msim/output_cubes/
+msim/output_cubes/*
