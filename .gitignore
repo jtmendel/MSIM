@@ -1,4 +1,6 @@
 *.pyc
 *~
 *DS_Store
-hsim/sim_data/detectors/HARMONI_dets.fits
+msim/sim_data/detectors/HARMONI_dets.fits
+
+msim/output_cubes/
