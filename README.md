@@ -1,10 +1,10 @@
-# MAVISIM
+# MSIM
 
-MAVISIM is a dedicated pipeline for simulating observations with MAVIS on the VLT U4. MAVISIM takes high spectral and spatial resolution input data cubes, encoding physical descriptions of astrophysical sources, and generates mock observed data cubes. The simulations incorporate detailed models of the sky, telescope, instrument, and detectors to produce realistic mock data ([Zieleniewski et al. 2015b](https://doi.org/10.1093/mnras/stv1860)).
+MSIM is a dedicated pipeline for simulating observations with MAVIS on the VLT U4. MSIM takes high spectral and spatial resolution input data cubes, encoding physical descriptions of astrophysical sources, and generates mock observed data cubes. The simulations incorporate detailed models of the sky, telescope, instrument, and detectors to produce realistic mock data ([Zieleniewski et al. 2015b](https://doi.org/10.1093/mnras/stv1860)).
 
-MAVISIM is programmed in Python, and is based on the HARMONI simulation pipeline HSIM3, the source code of which can be found at https://github.com/HARMONI-ELT/HSIM.
+MSIM is programmed in Python, and is based on the HARMONI simulation pipeline HSIM3, the source code of which can be found at https://github.com/HARMONI-ELT/HSIM.
 
-The purpose of MAVISIM is to perform in-depth simulations for several key science cases, as part of the design and development of the MAVIS integral field spectrograph. The goal is to be able to simulate the performance of the instrument folding in detailed parameters including the VLT AO performance, atmospheric effects and realistic detector statistics.
+The purpose of MSIM is to perform in-depth simulations for several key science cases, as part of the design and development of the MAVIS integral field spectrograph. The goal is to be able to simulate the performance of the instrument folding in detailed parameters including the VLT AO performance, atmospheric effects and realistic detector statistics.
 
 For updated information on how to run HSIM3, you can read the manual [hsim3.pdf](https://github.com/HARMONI-ELT/HSIM/blob/master/hsim/manual/hsim3.pdf)
 
