@@ -17,6 +17,7 @@ The required Python modules are:
 - numpy 1.19.5
 - scipy 1.5.4
 - matplotlib 3.3.4
+- tqdm 4.65.0
 
 The code has been tested with the indicated package version, although more recent releases of these packages are likely to work as well.
 
