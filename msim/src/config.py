@@ -93,8 +93,8 @@ config_data = {
 
     #TODO: check what the values of psfscale and psfsize should be and what they do in the code
     # CHANGELOG: 19-12-2023 - Switched to the 25 and 50 mas spaxel sizes. Need to figure out what the values for the psfscale and psfsize. Arbitrary values of 1.0 and 1000.0 have been used for now.
-    'spaxel_scale': { '25x25':SpaxelScaleInfo(25., 25., 1., 1000. ),
-                  '50x50':SpaxelScaleInfo(50., 50., 1., 1000.)
+    'spaxel_scale': { '25x25':SpaxelScaleInfo(25., 25., 1., 1000),
+                  '50x50':SpaxelScaleInfo(50., 50., 1., 1000)
                 #   '4x4':SpaxelScaleInfo(4., 4., 0.8, 1250),
                 #   '10x10':SpaxelScaleInfo(10., 10., 2., 800),
                 #   '20x20':SpaxelScaleInfo(20., 20., 4., 580),
