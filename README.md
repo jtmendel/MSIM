@@ -1,16 +1,12 @@
 # MSIM
+MSIM is the **MAVIS** fork of the open-source [HARMONI-ELT/HSIM](https://github.com/HARMONI-ELT/HSIM) tool. MSIM has been adapted for simulating observations with MAVIS on the VLT U4. MSIM takes high spectral and spatial resolution input data cubes, encoding physical descriptions of astrophysical sources, and generates mock observed data cubes. The simulations incorporate detailed models of the sky, telescope, instrument, and detectors to produce realistic mock data. If you use MSIM, please consider citing the HSIM paper, [Zieleniewski et al. 2015b](https://doi.org/10.1093/mnras/stv1860).
 
-MSIM is a dedicated pipeline for simulating observations with MAVIS on the VLT U4. MSIM takes high spectral and spatial resolution input data cubes, encoding physical descriptions of astrophysical sources, and generates mock observed data cubes. The simulations incorporate detailed models of the sky, telescope, instrument, and detectors to produce realistic mock data ([Zieleniewski et al. 2015b](https://doi.org/10.1093/mnras/stv1860)).
+The purpose of MSIM is to perform in-depth simulations for several key science cases, as part of the design and development of the MAVIS integral field spectrograph. The goal is to be able to simulate the performance of the instrument folding in detailed parameters including the MAVIS AO performance, atmospheric effects and realistic detector statistics.
 
-MSIM is programmed in Python, and is based on the HARMONI simulation pipeline HSIM3, the source code of which can be found at https://github.com/HARMONI-ELT/HSIM.
-
-The purpose of MSIM is to perform in-depth simulations for several key science cases, as part of the design and development of the MAVIS integral field spectrograph. The goal is to be able to simulate the performance of the instrument folding in detailed parameters including the VLT AO performance, atmospheric effects and realistic detector statistics.
-
-For updated information on how to run HSIM3, you can read the manual [hsim3.pdf](https://github.com/HARMONI-ELT/HSIM/blob/master/hsim/manual/hsim3.pdf)
-
+For updated information on how to run MSIM, you can try the HSIM3 manual ([hsim3.pdf](https://github.com/HARMONI-ELT/HSIM/blob/master/hsim/manual/hsim3.pdf)), though please note that there is no planned long-term compatibility between HSIM and MSIM, so this manual may diverge from MSIM eventually.
 
 ## System Requirements
-The pipeline is written in Python v3.6. We have tested it on Linux (Ubuntu 18.04 and 20.04), although it should be possible to run on Windows and Mac OSX.
+The pipeline is written in Python v3.6. It has been tested on Linux (Ubuntu 18.04 and 20.04), although it should be possible to run on Windows and Mac OSX.
 
 The required Python modules are:
 - astropy 4.1
@@ -33,4 +29,4 @@ We point out here several useful tips that have emerged from our extensive devel
 
 For questions please contact eric.muller@anu.edu.au
 
-Developers: Eric Muller, Jesse Cranney, Trevor Mendel
+Developers: Eric Muller, Jesse Cranney, Trevor Mendel, and of course, the developers of [HARMONI-ELT/HSIM](https://github.com/HARMONI-ELT/HSIM).
