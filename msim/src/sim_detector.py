@@ -13,6 +13,13 @@ Version 1.0.0 (2024-01-10)
 - Removed NIR saturation masking options and NIR detector performance options
 Author: Eric Muller (eric.muller@anu.edu.au)
 
+Version 1.0.1 (2024-)
+- Changed the detector QE curve to the E2V290 CCD QE curve
+- Changed the pixel size to 10 microns squared for the E2V290 CCD
+- 
+#TODO:
+
+
 '''
 import os
 import logging
@@ -32,7 +39,6 @@ from src.modules.em_model import *
 
 detpath = path_setup('../../' + config_data["data_dir"] + 'detectors/')
 
-#TODO: update this function and its child
 #Detector throughput curve generated just using wavelength array.
 def detector_QE_curve(wavels, grating, debug_plots, output_file):
 	'''Function that generates a detector QE curve.
@@ -48,10 +54,13 @@ def detector_QE_curve(wavels, grating, debug_plots, output_file):
 			each wavelength in array
 	'''
 	#TODO: make this use the MAVIS stuff. Add a gui param for the detector choice as MAVIS provides 4 files.
-	if grating == "V+R":
-		detector_QE_file = "Psyche_CCD231-84_ESO_measured_QE.txt"
-	else:
-		detector_QE_file = "H4RG_QE_design.txt"
+	# if grating == "V+R":
+	# 	detector_QE_file = "Psyche_CCD231-84_ESO_measured_QE.txt"
+	# else:
+	# 	detector_QE_file = "H4RG_QE_design.txt"
+  
+	# CHANGELOG 11-01-2024: For now, manually set to the E2V290 CCD QE curve.
+	detector_QE_file = "E2V290_QE.txt"
 		
 		
 	cube_det_qe, orig_qe_lambda, orig_qe = load_transmission_curve(wavels, detector_QE_file, debug_plots, [output_file, "det_qe"], "detector QE", scaling=1/100., full_curve=True)
@@ -214,11 +223,13 @@ def sim_detector(input_parameters, cube, back_emission, transmission, lambs, deb
 	# else:
 	# 	dark = detector_performance["dark_current"]["nir"]
 	# TODO: do the different MAVIS pixel scales come from rebinning? If so, need to treat dark current as above
+	# TODO: also need to deal with the FoV for MAVIS
 
 
+    # TODO: what to do about the F/2 camera?
 	# Thermal emission seen by the detector
-	# 15-micron pixels and F/2 camera... (independent of spaxel scale)
-	pixel_area = 15E-6**2 # m2 #TODO: update this to the MAVIS pixel size
+	# 10-micron pixels and F/2 camera... (independent of spaxel scale)
+	pixel_area = 10E-6**2 # m2 # CHANGELOG 11-01-2024: Changed to 10um pixels for E2V290 CCD
 	pixel_solid_cryo_mech = 0.2*(360/2./np.pi*3600.)**2 # arcsec**2
 	pixel_solid_rad = 2.0*np.pi*(360/2./np.pi*3600.)**2 # arcsec**2
 	
@@ -281,6 +292,7 @@ def make_rn_dist(det_save_path):
 					  Check config.py to ensure filename is correct')
 		return
 	
+    # TODO: change the readnoise file to that for the E2V290 CCD?
 	hdu = fits.open(rn_file)
 	rn_data = hdu[0].data
 

@@ -36,7 +36,7 @@ hc_path = path_setup('../../' + config_data["data_dir"] + 'HC/')
 AreaTel = config_data['telescope']['area'] # CHANGELOG 09-01-2024: changed this to the actual value, not zero (as it was in HSIM for some reason)
 
 class InstrumentPart:
-    substrate = "Suprasil3001_50mm_Emissivity.txt"
+    substrate = "Suprasil3001_50mm_Emissivity.txt" # TODO: update these to the correct substrates. Note sure what the lenses should be and don't know where I can find the VLT emissivity curves
     mirror = "QuantumFS500_Emissivity.txt"
     edust = 0.5 # Grey Dust covering on some optics
     mindustfrac = 0.005 # 0.5% dust on optical surfaces - won't be perfectly clean
@@ -79,17 +79,12 @@ class InstrumentPart:
         
         # Scale emissivity
         emi *= scaling
-        # logging.info('Scaled emissivity: %s', emi) # CHANGELOG 09-01-2024: added for my troubleshooting
         # Add dust emissivity
         emi += self.emis_dust*dust
-        # logging.info('Dust added: %s', emi) # CHANGELOG 09-01-2024: added for my troubleshooting
         # Calculate emissivity for n elements
         emi = 1. - (1. - emi)**n # ~= n*emi for small emi
-        # logging.info('Emissivity for %s elements: %s', n, emi) # CHANGELOG 09-01-2024: added for my troubleshooting
         # Scale depending on the effective area
         emi = emi*self.area/AreaTel
-        # logging.info('self.area: %s, AreaTel: %s', self.area, AreaTel) # CHANGELOG 09-01-2024: added for my troubleshooting
-        # logging.info('Area-scaled emissivity: %s', emi) # CHANGELOG 09-01-2024: added for my troubleshooting
         # Interpolate emissivity to output lambda grid
         emi_interp = interp1d(l, emi, kind='linear', bounds_error=False, fill_value=0.)
         
@@ -101,9 +96,7 @@ class InstrumentPart:
         emi_mirror = self.global_scaling*self.calcEmissivity(lamb, self.emis_mirror, self.emis_scaling, self.dust_mirror, self.n_mirrors)
         # lenses
         emi_lens = self.global_scaling*self.calcEmissivity(lamb, self.emis_lens, self.emis_scaling, self.dust_lens, self.n_lenses)
-        
-        # logging.info("emi_lens: %s, emi_mirror: %s", emi_lens, emi_mirror) # CHANGELOG 09-01-2024: added for my troubleshooting
-        
+                
         emissivity = 1. - ((1. - emi_mirror)*(1. - emi_lens))
         throughput = 1. - emissivity
         emission = emissivity*blackbody(lamb, self.temp) #J/s/m2/lambda(um)/arcsec2
@@ -210,8 +203,8 @@ def sim_instrument(input_parameters, cube, back_emission, transmission, ext_lamb
     # Get instrument transmission
     logging.info("Calculating MAVIS transmission and background") # CHANGELOG 10-01-2024: Changed text from HARMONI to MAVIS
     
-    #TODO: change this to "MAVIS" and change the variable name, then change all harmoni.* to mavis.* below
-    harmoni = Instrument("HARMONI")
+    # CHANGELOG 11-01-2024: Changed to the MAVIS instrument
+    mavis = Instrument("MAVIS")
     
     # Instrument model variables
     # -------------------------
@@ -236,7 +229,7 @@ def sim_instrument(input_parameters, cube, back_emission, transmission, ext_lamb
     rwindow = 0.01    # 1% AR coating on each surface
     # -------------------------
     
-    logging.debug("HARMONI model. TCool = {:d} K TCryo = {:d} K TCryoMech = {:d} K TTrap  = {:d} K Touter_window = {:d} K Tinner_window = {:d} K".format(*map(int, [TCool, TCryo, TCryoMech, TTrap, Touter_window, Tinner_window])))
+    logging.debug("MAVIS model. TCool = {:d} K TCryo = {:d} K TCryoMech = {:d} K TTrap  = {:d} K Touter_window = {:d} K Tinner_window = {:d} K".format(*map(int, [TCool, TCryo, TCryoMech, TTrap, Touter_window, Tinner_window])))
     logging.debug("AreaIns = {:6.1f} m2 AreaTel = {:6.1f} m2".format(AreaIns, AreaTel))
     logging.debug("edust = {:6.3f} dustfrac = {:6.3f} mindustfrac = {:6.3f}".format(InstrumentPart.edust, dustfrac, InstrumentPart.mindustfrac))
     logging.debug("ecoldtrap = {:6.3f} rwindow = {:6.3f}".format(ecoldtrap, rwindow))
@@ -248,42 +241,47 @@ def sim_instrument(input_parameters, cube, back_emission, transmission, ext_lamb
     # AO dichroic if present
     aoMode = input_parameters["ao_mode"]
     if aoMode == "LTAO":
-        harmoni.addPart(InstrumentPart("LTAO dichroic", TTel, AreaIns, n_lenses=1, emis_lens="LTAO_0.6_dichroic.txt", dust_lens=2.*dustfrac))
-        harmoni.addPart(InstrumentPart("AO cold trap", TTrap, AreaIns, n_mirrors=1, emis_mirror=0., dust_mirror=0.03, emis_dust=ecoldtrap))
+        mavis.addPart(InstrumentPart("LTAO dichroic", TTel, AreaIns, n_lenses=1, emis_lens="LTAO_0.6_dichroic.txt", dust_lens=2.*dustfrac))
+        mavis.addPart(InstrumentPart("AO cold trap", TTrap, AreaIns, n_mirrors=1, emis_mirror=0., dust_mirror=0.03, emis_dust=ecoldtrap))
     
-    harmoni.addPart(InstrumentPart("Outer window", Touter_window, AreaIns, n_lenses=1, emis_scaling=0.5, dust_lens=dustfrac + InstrumentPart.mindustfrac))
-    harmoni.addPart(InstrumentPart("Inner window", Tinner_window, AreaIns, n_lenses=1, emis_scaling=0.5, dust_lens=2.*InstrumentPart.mindustfrac))
+    mavis.addPart(InstrumentPart("Outer window", Touter_window, AreaIns, n_lenses=1, emis_scaling=0.5, dust_lens=dustfrac + InstrumentPart.mindustfrac))
+    mavis.addPart(InstrumentPart("Inner window", Tinner_window, AreaIns, n_lenses=1, emis_scaling=0.5, dust_lens=2.*InstrumentPart.mindustfrac))
 
-    harmoni.addPart(InstrumentPart("Window reflected", TTrap, AreaIns, n_mirrors=1, emis_mirror=0., dust_mirror=2.*0.8*2.0*rwindow, emis_dust=ecoldtrap))
+    mavis.addPart(InstrumentPart("Window reflected", TTrap, AreaIns, n_mirrors=1, emis_mirror=0., dust_mirror=2.*0.8*2.0*rwindow, emis_dust=ecoldtrap))
 
     low_dust_iso6 = 1
     # FPRS
     if low_dust_iso6:
-        harmoni.addPart(InstrumentPart("FPRS", TCool, AreaTel, n_mirrors=4))
+        mavis.addPart(InstrumentPart("FPRS", TCool, AreaTel, n_mirrors=4))
     else:
-        harmoni.addPart(InstrumentPart("FPRS", TCool, AreaTel, n_mirrors=3, dust_mirror=0.032))
-        harmoni.addPart(InstrumentPart("FPRS", TCool, AreaTel, n_mirrors=1, dust_mirror=0.008))
+        mavis.addPart(InstrumentPart("FPRS", TCool, AreaTel, n_mirrors=3, dust_mirror=0.032))
+        mavis.addPart(InstrumentPart("FPRS", TCool, AreaTel, n_mirrors=1, dust_mirror=0.008))
     
     if aoMode in ["SCAO", "HCAO"]:
-        harmoni.addPart(InstrumentPart("SCAO dichroic", TCool, AreaIns, n_lenses=1, emis_lens="SCAO_0.8_dichroic.txt", dust_lens=2.*dustfrac))
+        mavis.addPart(InstrumentPart("SCAO dichroic", TCool, AreaIns, n_lenses=1, emis_lens="SCAO_0.8_dichroic.txt", dust_lens=2.*dustfrac))
     
     if low_dust_iso6:
-        harmoni.addPart(InstrumentPart("Cryo window", TCool, AreaTel, n_lenses=1, emis_scaling=0.4, dust_lens=InstrumentPart.mindustfrac))
+        mavis.addPart(InstrumentPart("Cryo window", TCool, AreaTel, n_lenses=1, emis_scaling=0.4, dust_lens=InstrumentPart.mindustfrac))
     else:
-        harmoni.addPart(InstrumentPart("Cryo window", TCool, AreaTel, n_lenses=1, emis_scaling=0.4, dust_lens=0.125))
+        mavis.addPart(InstrumentPart("Cryo window", TCool, AreaTel, n_lenses=1, emis_scaling=0.4, dust_lens=0.125))
         
-    harmoni.addPart(InstrumentPart("Cryo window inner dust", TCryo+50., AreaIns, n_mirrors=1, emis_mirror=0., dust_mirror=InstrumentPart.mindustfrac))
-    harmoni.addPart(InstrumentPart("Cryo window cold trap", TCryo+50., AreaIns, n_mirrors=1, emis_mirror=0., dust_mirror=2.0*rwindow, emis_dust=ecoldtrap))
+    mavis.addPart(InstrumentPart("Cryo window inner dust", TCryo+50., AreaIns, n_mirrors=1, emis_mirror=0., dust_mirror=InstrumentPart.mindustfrac))
+    mavis.addPart(InstrumentPart("Cryo window cold trap", TCryo+50., AreaIns, n_mirrors=1, emis_mirror=0., dust_mirror=2.0*rwindow, emis_dust=ecoldtrap))
 
     # Cryostat
-    harmoni.addPart(InstrumentPart("Pre-optics+IFU+Spectrograph", TCryoMech, AreaIns, n_lenses=11, n_mirrors=23))
+    mavis.addPart(InstrumentPart("Pre-optics+IFU+Spectrograph", TCryoMech, AreaIns, n_lenses=11, n_mirrors=23))
 
     # Grating
     grating = input_parameters["grating"]
-    harmoni.addPart(InstrumentPart("Grating " + grating, TCryoMech, AreaIns, n_mirrors=1, emis_mirror=grating + "_grating.txt", dust_mirror=0))
+    mavis.addPart(InstrumentPart("Grating " + grating, TCryoMech, AreaIns, n_mirrors=1, emis_mirror=grating + "_grating.txt", dust_mirror=0))
+    
+    ################################ MAVIS frameworking ################################
+    
+    # Nasmyth flange -- spectrograph arms
+    
  
  
-    HARMONI_transmission, HARMONI_background = harmoni.calcThroughputAndEmission(ext_lambs, input_parameters["exposure_time"], output_file=output_file)
+    MAVIS_transmission, MAVIS_background = mavis.calcThroughputAndEmission(ext_lambs, input_parameters["exposure_time"], output_file=output_file)
     
     # CHANGELOG 08-01-2023: Commented this section out
     # if input_parameters["mci"]:
@@ -321,17 +319,17 @@ def sim_instrument(input_parameters, cube, back_emission, transmission, ext_lamb
     #     np.savetxt(plot_file + "_em.txt", np.c_[ext_lambs, HARMONI_background])
 
 
-    back_emission = back_emission*HARMONI_transmission
-    transmission = transmission*HARMONI_transmission
-    back_emission = back_emission + HARMONI_background
+    back_emission = back_emission*MAVIS_transmission
+    transmission = transmission*MAVIS_transmission
+    back_emission = back_emission + MAVIS_background
     
     # Add instrument emission/transmission to the input cube
     
-    instrument_tr_cube = HARMONI_transmission[cube_lamb_mask]
+    instrument_tr_cube = MAVIS_transmission[cube_lamb_mask]
     instrument_tr_cube.shape = (np.sum(cube_lamb_mask), 1, 1)
     cube *= instrument_tr_cube
 
-    instrument_background_cube = HARMONI_background[cube_lamb_mask]
+    instrument_background_cube = MAVIS_background[cube_lamb_mask]
     instrument_background_cube.shape = (np.sum(cube_lamb_mask), 1, 1)
     cube += instrument_background_cube
 
@@ -339,10 +337,7 @@ def sim_instrument(input_parameters, cube, back_emission, transmission, ext_lamb
     # - LSF
     logging.info("Convolve with LSF")
     # Assume Gaussian LSF
-    if input_parameters["mci"]:
-        bandws = config_data['gratings_nominal'][grating]
-    else:
-        bandws = config_data['gratings'][grating]
+    bandws = config_data['gratings'][grating] # CHANGELOG 11-01-2024: Removed mci option
         
     new_res = (bandws.lmin + bandws.lmax)/(2.*bandws.R) # micron
     pix_size = (ext_lambs[1] - ext_lambs[0])

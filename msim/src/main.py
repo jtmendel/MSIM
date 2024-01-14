@@ -23,6 +23,11 @@ Version 1.0.0 (2024-01-10)
 - Remover debug plots from being saved to stop code breaking.
 Author: Eric Muller (eric.muller@anu.edu.au)
 
+Version 1.0.1 (2024-01-)
+- Removed cross-talk application as we have no IR detectors.
+- Removed dedicated on-sky observation code as we have no IR detectors.
+- Removed detector systematics fits outputs as we have no IR detectors.
+#TODO:
 '''
 import collections
 import glob
@@ -423,11 +428,12 @@ def main(input_parameters):
     NDIT = input_parameters["n_exposures"]
     # - object exposure with crosstalk
     sim_object_plus_back = np.random.poisson(abs(output_cube_spec*NDIT)).astype(np.float32)
-    # Apply crosstalk only to NIR detectors
-    if grating != "V+R":
-        if not input_parameters["mci"]:
-            logging.info("Applying detector crosstalk")
-            sim_object_plus_back = apply_crosstalk(sim_object_plus_back, config_data["crosstalk"])
+    # CHANGELOG 11-01-2024: Removed the crosstalk application as we use visible detectors, not IR
+    # # Apply crosstalk only to NIR detectors
+    # if grating != "V+R":
+    #     if not input_parameters["mci"]:
+    #         logging.info("Applying detector crosstalk")
+    #         sim_object_plus_back = apply_crosstalk(sim_object_plus_back, config_data["crosstalk"])
 
     if np.sum(saturated_obj_back) > 0:
         logging.warning(str(np.sum(saturated_obj_back)) + " pixels are saturated in the obj + back frames")
@@ -458,10 +464,11 @@ def main(input_parameters):
     # B. Background exposure
     #- background with crosstalk
     sim_back = np.random.poisson(abs(output_back_emission_cube*NDIT)).astype(np.float32)
-    # Apply crosstalk only to NIR detectors
-    if grating != "V+R":
-        if not input_parameters["mci"]:
-            sim_back = apply_crosstalk(sim_back, config_data["crosstalk"])
+    # CHANGELOG 11-01-2024: Removed the crosstalk application as we use visible detectors, not IR
+    # # Apply crosstalk only to NIR detectors
+    # if grating != "V+R":
+    #     if not input_parameters["mci"]:
+    #         sim_back = apply_crosstalk(sim_back, config_data["crosstalk"])
 
     if np.sum(saturated_back) > 0:
         logging.warning(str(np.sum(saturated_back)) + " pixels are saturated in the back frames")
@@ -533,10 +540,11 @@ def main(input_parameters):
         noise_cube_pca0 = zero_cube + np.sqrt(NDIT)*config_data['systematics']['pca0_amp']
         noise_cube_dets = zero_cube + np.sqrt(NDIT)*sim_only_dets + np.sqrt(NDIT)*sim_back_dets
 
-    if grating != "V+R":
-        n_observations = 2
-    else:
-        n_observations = 1 # no dedicated sky observation
+    # CHANGELOG 11-01-2024: Removed the IR detector option
+    # if grating != "V+R":
+    #     n_observations = 2
+    # else:
+    n_observations = 1 # no dedicated sky observation
 
 
     if det_switch == False:
@@ -712,12 +720,13 @@ def main(input_parameters):
 
     head['HSM_TIME'] = str(datetime.datetime.utcnow())
 
-    # Apply crosstalk to the noiseless cubes
-    if grating != "V+R":
-        if not input_parameters["mci"]:
-            output_cube_spec = apply_crosstalk(output_cube_spec, config_data["crosstalk"])
-            output_back_emission_cube = apply_crosstalk(output_back_emission_cube, config_data["crosstalk"])
-            output_cube_spec_wo_back = apply_crosstalk(output_cube_spec_wo_back, config_data["crosstalk"])
+    # CHANGELOG 11-01-2024: Removed the crosstalk application as we use visible detectors, not IR
+    # # Apply crosstalk to the noiseless cubes
+    # if grating != "V+R":
+    #     if not input_parameters["mci"]:3
+    #         output_cube_spec = apply_crosstalk(output_cube_spec, config_data["crosstalk"])
+    #         output_back_emission_cube = apply_crosstalk(output_back_emission_cube, config_data["crosstalk"])
+    #         output_cube_spec_wo_back = apply_crosstalk(output_cube_spec_wo_back, config_data["crosstalk"])
 
     save_fits_cube(outFile_noiseless_object_plus_back, output_cube_spec*NDIT, "Noiseless O+B", head)
     save_fits_cube(outFile_noiseless_background, output_back_emission_cube*NDIT, "Noiseless B", head)
@@ -759,11 +768,12 @@ def main(input_parameters):
     save_fits_cube(outFile_flux_cal_noiseless, output_cube_spec_wo_back*factor_calibration/(DIT*spaxel_area), "Flux cal Noiseless O", head)
     save_fits_cube(outFile_flux_cal_reduced, sim_reduced*factor_calibration/(NDIT*DIT*spaxel_area), "Flux cal Reduced (O+B1+Noise1) - (B2+Noise2)", head)
 
-    if det_switch == True:
-        save_fits_cube(outFile_alldets, sim_det_systematics1, "All simulated detectors", head)
-        save_fits_cube(outFile_useddets, sim_only_dets, "Used detector noise", head)
-        save_fits_cube(outFile_detSNR, output_cube_spec_wo_back*NDIT/noise_cube_total_with_dets, "SNR (O-B)/Exact Noise", head)
-        save_fits_cube(outFile_detstd, noise_cube_total_with_dets, "Noise std with exact dets", head)
+    # CHANGELOG 12-01-2024: Removed this option as it pertained to IR detectors
+    # if det_switch == True:
+    #     save_fits_cube(outFile_alldets, sim_det_systematics1, "All simulated detectors", head)
+    #     save_fits_cube(outFile_useddets, sim_only_dets, "Used detector noise", head)
+    #     save_fits_cube(outFile_detSNR, output_cube_spec_wo_back*NDIT/noise_cube_total_with_dets, "SNR (O-B)/Exact Noise", head)
+    #     save_fits_cube(outFile_detstd, noise_cube_total_with_dets, "Noise std with exact dets", head)
 
     if input_parameters["debug"] == True:
         save_fits_cube(outFile_dark, noise_cube_dark, "dark noise variance", head)
@@ -786,10 +796,11 @@ def main(input_parameters):
 
     logging.info("Noise contributions: Background (sky+tel+instrument) = {:.2f} %. Dark current = {:.2f} %. Read noise = {:.2f} %".format(fraction_noise_back, fraction_noise_dark, fraction_noise_read))
 
-    # Save transmission with crosstalk
-    if grating != "V+R":
-        if not input_parameters["mci"]:
-            output_transmission = apply_crosstalk_1d(output_transmission, config_data["crosstalk"])
+    # CHANGELOG 11-01-2024: Removed the crosstalk application as we use visible detectors, not IR
+    # # Save transmission with crosstalk
+    # if grating != "V+R":
+    #     if not input_parameters["mci"]:
+    #         output_transmission = apply_crosstalk_1d(output_transmission, config_data["crosstalk"])
 
     np.savetxt(base_filename + "_total_tr.txt", np.c_[output_lambs, output_transmission], comments="#", header="\n".join([
         'TYPE: Total transmission.',

@@ -120,6 +120,7 @@ def sim_telescope(input_parameters, cube, back_emission, transmission, ext_lambs
 		#logging.info("Using ELT reflectivity ESO-253082_4")
 		#telescope_reflectivity = load_transmission_curve(ext_lambs, "ELT_mirror_reflectivity_mci.txt", debug_plots, [output_file, "tel"], "telescope transmission")
 	
+    # TODO: change this over to the VLT mirrors, do I need to combine the three files into one?
 	telescope_reflectivity = load_transmission_curve(ext_lambs, "ELT_mirror_reflectivity.txt", debug_plots, [output_file, "tel"], "telescope transmission")
 	#telescope_reflectivity = load_transmission_curve(ext_lambs, "ELT_mirror_reflectivity_age0.txt", debug_plots, [output_file, "tel"], "telescope transmission")
 		
