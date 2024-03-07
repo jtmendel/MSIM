@@ -27,14 +27,13 @@ import logging
 import numpy as np
 import scipy.constants as sp
 from scipy.interpolate import UnivariateSpline
-from scipy.interpolate import interp1d
+from scipy.interpolate import PchipInterpolator as interp1d
 from scipy import integrate
 from astropy.convolution import Gaussian1DKernel
 from astropy.io import fits
 
 from src.modules.misc_utils import path_setup
 from src.config import *
-from src.modules import nghxrg as ng
 from src.modules.em_model import *
 
 detpath = path_setup('../../' + config_data["data_dir"] + 'detectors/')
@@ -53,15 +52,8 @@ def detector_QE_curve(wavels, grating, debug_plots, output_file):
 		cube_det_qe: array of detector QE values for
 			each wavelength in array
 	'''
-	#TODO: make this use the MAVIS stuff. Add a gui param for the detector choice as MAVIS provides 4 files.
-	# if grating == "V+R":
-	# 	detector_QE_file = "Psyche_CCD231-84_ESO_measured_QE.txt"
-	# else:
-	# 	detector_QE_file = "H4RG_QE_design.txt"
-  
 	# CHANGELOG 11-01-2024: For now, manually set to the E2V290 CCD QE curve.
 	detector_QE_file = "E2V290_QE.txt"
-		
 		
 	cube_det_qe, orig_qe_lambda, orig_qe = load_transmission_curve(wavels, detector_QE_file, debug_plots, [output_file, "det_qe"], "detector QE", scaling=1/100., full_curve=True)
 	return cube_det_qe, orig_qe_lambda, orig_qe
@@ -95,51 +87,6 @@ def mask_saturated_pixels(cube, grating):
 	
 	return cube, mask_pixels
 
-	
-
-def apply_crosstalk(cube, crosstalk):
-	''' Simulates crosstalk detector effects
-	Inputs:
-		cube: Input datacube (RA, DEC, lambda)
-		crosstalk: Fraction of the photons that go to each of the 4 contiguous pixels
-	Outputs:
-		cube: Cube including crosstalk
-	'''
-	
-	#logging.info("Applying detector crosstalk")
-	
-	scaled_cube = cube*(1. - crosstalk*4)
-	
-	# crosstalk in the spatial direction
-	spatial_crosstalk = crosstalk*(np.roll(cube, 1, axis=2) + np.roll(cube, -1, axis=2))
-	
-	# crosstalk in the spectral direction
-	spectral_crosstalk = crosstalk*(np.roll(cube, 1, axis=0) + np.roll(cube, -1, axis=0))
-	
-	return scaled_cube + spatial_crosstalk + spectral_crosstalk
-
-
-def apply_crosstalk_1d(spectrum, crosstalk):
-	''' Simulates crosstalk detector effects
-	Inputs:
-		spectrum: Input spectrum (lambda)
-		crosstalk: Fraction of the photons that go to each of the 4 contiguous pixels
-	Outputs:
-		spectrum including crosstalk
-	'''
-	
-	#logging.info("Applying detector crosstalk - 1d")
-	
-	scaled_spectrum = spectrum*(1. - crosstalk*2)
-	
-	# crosstalk in the spectral direction
-	spectral_crosstalk = crosstalk*(np.roll(spectrum, 1, axis=0) + np.roll(spectrum, -1, axis=0))
-	
-	return scaled_spectrum + spectral_crosstalk
-
-
- 
-
 def sim_detector(input_parameters, cube, back_emission, transmission, lambs, debug_plots=False, output_file=""):
 	''' Simulates detector effects
 	Inputs:
@@ -166,14 +113,14 @@ def sim_detector(input_parameters, cube, back_emission, transmission, lambs, deb
 	DIT = input_parameters["exposure_time"]
 	grating = input_parameters["grating"]
 	
-	detector_performance = config_data['detector'][input_parameters["detector"]]
+	detector_performance = config_data['detector']['avg']
 	
 	# Get QE curve
 	logging.info("Calculating detector QE")
 	if type(detector_performance['qe']) == str and detector_performance['qe'] == "file":
 		qe_curve, orig_qe_lambda, orig_qe = detector_QE_curve(lambs, grating, debug_plots, output_file)
 	else:
-		f = interp1d(detector_performance['qe']["w"], detector_performance['qe']["qe"], fill_value="extrapolate")
+		f = interp1d(detector_performance['qe']["w"], detector_performance['qe']["qe"], extrapolate=True)
 		qe_curve = f(lambs)
 		
 		if debug_plots:
@@ -200,33 +147,8 @@ def sim_detector(input_parameters, cube, back_emission, transmission, lambs, deb
 	# CHANGELOG 03-01-2024: Just set it to the 'vis' values as we have only included these.
 	read_noise = detector_performance["read_noise"]["vis"]
 	dark = detector_performance["dark_current"]["vis"]
-	
-    # CHANGELOG 03-01-2024: Commented this out, see above.
-	# # read noise
-	# if grating == "V+R":
-	# 	read_noise = detector_performance["read_noise"]["vis"]
-	# else:
-	# 	if DIT <= 120.:
-	# 		read_noise = detector_performance["read_noise"]["nir_lowexp"]
-	# 	else:
-	# 		read_noise = detector_performance["read_noise"]["nir"]
 
-
-	# # dark current
-	# if grating == "V+R":
-	# 	dark = detector_performance["dark_current"]["vis"]
-	# 	# dark current increases due to pixel binning
-	# 	if config_data["spaxel_scale"] == "60x60":
-	# 		dark = dark*2
-	# 	elif config_data["spaxel_scale"] == "120x60":
-	# 		dark = dark*4
-	# else:
-	# 	dark = detector_performance["dark_current"]["nir"]
-	# TODO: do the different MAVIS pixel scales come from rebinning? If so, need to treat dark current as above
-	# TODO: also need to deal with the FoV for MAVIS
-
-
-    # TODO: what to do about the F/2 camera?
+    # keeping this so that things don't break, but probably not correct. Thermal emission not really an issue anyways. 
 	# Thermal emission seen by the detector
 	# 10-micron pixels and F/2 camera... (independent of spaxel scale)
 	pixel_area = 10E-6**2 # m2 # CHANGELOG 11-01-2024: Changed to 10um pixels for E2V290 CCD
@@ -272,17 +194,17 @@ def make_rn_dist(det_save_path):
 		det_save_path = detpath
 	
 	# First look to see if detectors already made
-	if os.path.exists(det_save_path+'HARMONI_dets.fits'):
-		logging.info('- found existing HARMONI detectors')
+	if os.path.exists(det_save_path+'MAVIS_dets.fits'):
+		logging.info('- found existing MAVIS detectors')
 		if config_data['systematics']['force_new'] == False:
 			logging.info('- using existing detectors')
-			hdulist = fits.open(det_save_path+'HARMONI_dets.fits')
+			hdulist = fits.open(det_save_path+'MAVIS_dets.fits')
 			rn_vals = hdulist[0].data
 			return rn_vals
 		else:
 			logging.info('- overwriting exisiting detectors')
 
-	logging.info('- no exisiting HARMONI detectors found')
+	logging.info('- no exisiting MAVIS detectors found')
 	logging.info('- creating new detectors')
 	
 	rn_path = path_setup('../../' + config_data["data_dir"] + 'detectors/')
@@ -333,11 +255,12 @@ def make_dets(rn_vals, DIT):
 	dets_head = det_hdu.header
 	return dets, dets_head
 
+
 def add_detectors(cube, dets):
 	''' Adds detectors to a datacube
 	Inputs:
 		cube: Input datacube (RA, DEC, lambda)
-		dets: List of 8 detector arrays
+		dets: List of 2 detector arrays
 
 	Outputs:
 		new_datacube: Cube with detector systematics added
@@ -346,21 +269,17 @@ def add_detectors(cube, dets):
 	cube_shape = cube.shape
 	
 	# allow for datacube to be smaller than the detectors
-	full_datacube = np.zeros((3700,152,204))
+    # MAVIS 144x100, split 50+50
+	#full_datacube = np.zeros((3700,152,204))
+	full_datacube = np.zeros((8750,144,100))
 	full_datacube[:cube_shape[0],:cube_shape[1],:cube_shape[2]] += cube
 
-	# slice datacube up into 8 octants
-	slice1 = full_datacube[:,:38,:102]
-	slice2 = full_datacube[:,:38,102:]
-	slice3 = full_datacube[:,38:76,:102]
-	slice4 = full_datacube[:,38:76,102:]
-	slice5 = full_datacube[:,76:114,:102]
-	slice6 = full_datacube[:,76:114,102:]
-	slice7 = full_datacube[:,114:,:102]
-	slice8 = full_datacube[:,114:,102:]
-	slices = [slice1, slice2, slice3, slice4, slice5, slice6, slice7, slice8]
+	# slice datacube up into 2 halves
+	slice1 = full_datacube[:,:,:50]
+	slice2 = full_datacube[:,:,50:]
+	slices = [slice1, slice2]
 
-		# add detector read noise onto datacube
+	# add detector read noise onto datacube
 	for i in range(len(sim_dets)):
 		for j in range(slices[0].shape[1]):
 			slitlet = slices[i][:,j,:]
@@ -377,7 +296,7 @@ def add_detectors(cube, dets):
 				else:
 					vert_pos = 204 - (2 * j) + 67
 
-			sim_dets[i][vert_pos:vert_pos+3700, hoz_pos:hoz_pos+102]+=slitlet
+			sim_dets[i][vert_pos:vert_pos+8750, hoz_pos:hoz_pos+50]+=slitlet
 
 		# Convert detectors back into datacube		
 	new_datacube_slices=[]
@@ -393,22 +312,22 @@ def add_detectors(cube, dets):
 			else:
 				hoz_pos = np.int(np.round(12.5+(j*102)+(4.73*j)))
 				if j % 2 == 0:
-					vert_pos = 204 - (2 * j) - 67
+					vert_pos = 100 - (2 * j) - 67 
 				else:
-					vert_pos = 204 - (2 * j) + 67
-			new_datacube_slice[:,j,:] = sim_dets[i][vert_pos:vert_pos+3700, hoz_pos:hoz_pos+102]
+					vert_pos = 100 - (2 * j) + 67
+			new_datacube_slice[:,j,:] = sim_dets[i][vert_pos:vert_pos+8750, hoz_pos:hoz_pos+50]
 		new_datacube_slices.append(new_datacube_slice)
 
-	new_datacube = np.zeros((3700,152,204))
+	new_datacube = np.zeros((8750,144,100))
 
 	new_datacube[:,:38,:102] = new_datacube_slices[0]
 	new_datacube[:,:38,102:] = new_datacube_slices[1]
-	new_datacube[:,38:76,:102] = new_datacube_slices[2]
-	new_datacube[:,38:76,102:] = new_datacube_slices[3]
-	new_datacube[:,76:114,:102] = new_datacube_slices[4]
-	new_datacube[:,76:114,102:] = new_datacube_slices[5]
-	new_datacube[:,114:,:102] = new_datacube_slices[6]
-	new_datacube[:,114:,102:] = new_datacube_slices[7]
+#	new_datacube[:,38:76,:102] = new_datacube_slices[2]
+#	new_datacube[:,38:76,102:] = new_datacube_slices[3]
+#	new_datacube[:,76:114,:102] = new_datacube_slices[4]
+#	new_datacube[:,76:114,102:] = new_datacube_slices[5]
+#	new_datacube[:,114:,:102] = new_datacube_slices[6]
+#	new_datacube[:,114:,102:] = new_datacube_slices[7]
 
 	# ensure new cube is same size as input cube
 	new_datacube = new_datacube[:cube_shape[0],:cube_shape[1],:cube_shape[2]]

@@ -56,7 +56,7 @@ def spectral_res(datacube, head, grating, wavels):
 		new_res = (bandws.lmin + bandws.lmax)/(2.*bandws.R)
 		lamb_per_pix = new_res/config_data["spectral_sampling"]["internal"]
 	except:
-		raise HSIMError(grating + ' is not a valid grating. Valid options are: ' + ", ".join(sorted(config_data['gratings'].keys())))
+		raise MSIMError(grating + ' is not a valid grating. Valid options are: ' + ", ".join(sorted(config_data['gratings'].keys())))
 	
 	input_spec_res = head['SPECRES'] # micron
 	
@@ -102,7 +102,8 @@ def spectral_res(datacube, head, grating, wavels):
 		new_wavels = np.arange(wavels[0], bandws.lmax, lamb_per_pix)
 		
 	else:
-		raise HSIMError('The wavelength range of the input cube ' + str(wavels[0]) + " - " + str(wavels[-1]) + " is not valid for the " + grating + " grating ("  + str(bandws.lmin) + " - " + str(bandws.lmax) + ")")
+		raise MSIMError('The wavelength range of the input cube ' + str(wavels[0]) + " - " + str(wavels[-1]) + 
+                        " is not valid for the " + grating + " grating ("  + str(bandws.lmin) + " - " + str(bandws.lmax) + ")")
 
 	
 	# regrid spectrum and conserve flux
@@ -148,7 +149,7 @@ def spatial_res(datacube, head, spax):
 	try:
 		spax_scale = config_data['spaxel_scale'][spax]
 	except:
-		raise HSIMError(spax + ' is not a valid spaxel scale. Valid options are: ' + ", ".join(sorted(config_data['spaxel_scale'].keys())))
+		raise MSIMError(spax + ' is not a valid spaxel scale. Valid options are: ' + ", ".join(sorted(config_data['spaxel_scale'].keys())))
 
 	logging.info('Input sampling = %.2f x %.2f mas' % (head['CDELT1'], head['CDELT2']))
 	new_sampling_x = spax_scale.psfscale*np.sign(head['CDELT1'])
@@ -164,7 +165,7 @@ def spatial_res(datacube, head, spax):
 	xmax = head['CDELT1']*(x-1)
 	ymax = head['CDELT2']*(y-1)
 	if abs(xmax) < min_internal_pix or abs(ymax) < min_internal_pix:
-		raise HSIMError('The input cube spatial dimension is too small. Minimum size is {s}x{s} mas'.format(s=int(min_internal_pix*spax_scale.psfscale)))
+		raise MSIMError('The input cube spatial dimension is too small. Minimum size is {s}x{s} mas'.format(s=int(min_internal_pix*spax_scale.psfscale)))
 	
 
 	if new_sampling_x != head['CDELT1'] or new_sampling_y != head['CDELT2']:
@@ -193,8 +194,6 @@ def spatial_res(datacube, head, spax):
 	else:
 		
 		new_cube = datacube
-		
-		
 		
 	#Update header
 	head['CRPIX1'] = 1
@@ -237,10 +236,10 @@ def init_cube(datacube, grating, spax):
 			cube = datacube.data
 			head = datacube.header
 		except:
-			raise HSIMError('Please use FITS input file - ' + str(datacube))
+			raise MSIMError('Please use FITS input file - ' + str(datacube))
 	
 	if np.isnan(np.sum(cube)):
-		raise HSIMError('NaN values are not allowed in the input cube')
+		raise MSIMError('NaN values are not allowed in the input cube')
 	
 	
 	#Check that datacube has required headers to be processed in simulator
@@ -257,7 +256,7 @@ def init_cube(datacube, grating, spax):
 			missing_headers.append(i)
 			
 	if len(missing_headers) != 0:
-		raise HSIMError('Missing headers. Please correct datacube header.')
+		raise MSIMError('Missing headers. Please correct datacube header.')
 	
 	# define CRVAL{1,2} and CRPIX{1,2} if not included in the header
 	if "CRVAL1" not in head:
@@ -276,26 +275,26 @@ def init_cube(datacube, grating, spax):
 	ctype3 = map(str.lower, ['wavelength'])
 	
 	if head['CTYPE1'].lower() not in ctype1:
-		raise HSIMError("CTYPE1 must be set to any of the following: " + ", ".join(ctype1))
+		raise MSIMError("CTYPE1 must be set to any of the following: " + ", ".join(ctype1))
 	
 	if head['CTYPE2'].lower() not in ctype2:
-		raise HSIMError("CTYPE2 must be set to any of the following: " + ", ".join(ctype2))
+		raise MSIMError("CTYPE2 must be set to any of the following: " + ", ".join(ctype2))
 	
 	if head['CTYPE3'].lower() not in ctype3:
-		raise HSIMError("CTYPE3 must be set to any of the following: " + ", ".join(ctype3))
+		raise MSIMError("CTYPE3 must be set to any of the following: " + ", ".join(ctype3))
 	
 	# Check axes units
 	try:
 		head['CDELT1'] *= u.Unit(head["CUNIT1"]).to("mas")
 		head['CUNIT1'] = 'mas'
 	except ValueError as e:
-		raise HSIMError("CUNIT1 error: " + str(e))
+		raise MSIMError("CUNIT1 error: " + str(e))
 	
 	try:
 		head['CDELT2'] *= u.Unit(head["CUNIT2"]).to("mas")
 		head['CUNIT2'] = 'mas'
 	except ValueError as e:
-		raise HSIMError("CUNIT2 error: " + str(e))
+		raise MSIMError("CUNIT2 error: " + str(e))
 	
 	try:
 		factor = u.Unit(head["CUNIT3"]).to("micron")
@@ -304,7 +303,7 @@ def init_cube(datacube, grating, spax):
 		head['CRVAL3'] *= factor
 		head['CUNIT3'] = 'micron'
 	except ValueError as e:
-		HSIMError("CUNIT3 error: " + str(e))
+		MSIMError("CUNIT3 error: " + str(e))
 		
 	
 	# Create wavelength arrray 
@@ -342,7 +341,7 @@ def init_cube(datacube, grating, spax):
 		head['BUNIT'] = str(internal_cube_units)
 		
 	except (ValueError, u.UnitConversionError) as e:
-		raise HSIMError("BUNIT error: " + str(e))
+		raise MSIMError("BUNIT error: " + str(e))
 	
 	logging.info('The flux range of the input cube is {:.2e} - {:.2e} ph/s/m2/um/arcsec2'.format(np.min(cube), np.max(cube)))
 

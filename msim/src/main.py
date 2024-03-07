@@ -49,13 +49,13 @@ from src.init_cube import init_cube
 from src.sim_sky import sim_sky
 from src.sim_telescope import sim_telescope
 from src.sim_instrument import sim_instrument
-from src.sim_detector import sim_detector, apply_crosstalk, mask_saturated_pixels, apply_crosstalk_1d
+from src.sim_detector import sim_detector, mask_saturated_pixels
 from src.modules.adr import apply_adr
 from src.modules.rebin import *
 
-# Detector systematics
-from src.sim_detector import make_rn_dist, make_dets, add_detectors
-from src.modules.misc_utils import trim_cube
+## Detector systematics
+#from src.sim_detector import make_rn_dist, make_dets, add_detectors
+#from src.modules.misc_utils import trim_cube
 
 
 def main(input_parameters):
@@ -90,7 +90,7 @@ def main(input_parameters):
         'config_file': configuration file
         'debug': keep debug plots and all noise outputs
         'n_cpus': Number of processes
-        'version': HSIM version
+        'version': MSIM version
     Outputs:
 
     '''
@@ -100,30 +100,27 @@ def main(input_parameters):
 
     Conf = collections.namedtuple('Conf', 'name, header, value')
     simulation_conf = [
-            Conf('HSIM Version', 'HSM_VER', 'version'),
-            Conf('Config file', 'HSM_CFG', 'config_file'),
-            Conf('Filename', 'HSM_FILE', 'input_cube'),
-            Conf('Output dir', 'HSM_OUTD', 'output_dir'),
-            Conf('Exposure time', 'HSM_EXP', 'exposure_time'),
-            Conf('Number of exposures', 'HSM_NEXP', 'n_exposures'),
-            Conf('Spaxel scale', 'HSM_SPAX', 'spaxel_scale'),
-            Conf('Grating', 'HSM_GRAT', 'grating'),
-            Conf('Zenith seeing', 'HSM_SEEI', 'zenith_seeing'),
-            Conf('Air Mass', 'HSM_AIRM', 'air_mass'),
-            Conf('Extra jitter', 'HSM_JITT', 'extra_jitter'),
-            Conf('Telescope temperature [K]', 'HSM_TEMP', 'telescope_temp'),
-            Conf('FPRS temperature [C]', 'HSM_FPRS', 'fprs_temp'),
-            Conf('Scattered background [%]', 'HSM_SCSK', 'scattered_sky'),
-            Conf('Moon', 'HSM_MOON', 'moon_illumination'),
-            Conf('ADR', 'HSM_ADR', 'adr'),
-            # Conf('MCI', 'HSM_MCI', 'mci'), # CHANGELOG 29-11-2023: Removed the mci option
-            Conf('Near-IR detector performace', 'HSM_DETP', 'detector'),
-            # Conf('Detector systematics', 'HSM_DET', 'detector_systematics'), # CHANGELOG 10-01-2024: Removed the detector_systematics option as we use visible not IR detectors
-            Conf('Seed', 'HSM_SEED', 'noise_seed'),
-            Conf('AO', 'HSM_AO', 'ao_mode'),
+            Conf('MSIM Version', 'MSM_VER', 'version'),
+            Conf('Config file', 'MSM_CFG', 'config_file'),
+            Conf('Filename', 'MSM_FILE', 'input_cube'),
+            Conf('Output dir', 'MSM_OUTD', 'output_dir'),
+            Conf('Exposure time', 'MSM_EXP', 'exposure_time'),
+            Conf('Number of exposures', 'MSM_NEXP', 'n_exposures'),
+            Conf('Spaxel scale', 'MSM_SPAX', 'spaxel_scale'),
+            Conf('Grating', 'MSM_GRAT', 'grating'),
+            Conf('Zenith seeing', 'MSM_SEEI', 'zenith_seeing'),
+            Conf('Air Mass', 'MSM_AIRM', 'air_mass'),
+            Conf('Extra jitter', 'MSM_JITT', 'extra_jitter'),
+            Conf('Telescope temperature [K]', 'MSM_TEMP', 'telescope_temp'),
+            Conf('FPRS temperature [C]', 'MSM_FPRS', 'fprs_temp'),
+            Conf('Scattered background [%]', 'MSM_SCSK', 'scattered_sky'),
+            Conf('Moon', 'MSM_MOON', 'moon_illumination'),
+            Conf('ADR', 'MSM_ADR', 'adr'),
+            Conf('Seed', 'MSM_SEED', 'noise_seed'),
+            Conf('AO', 'MSM_AO', 'ao_mode'),
             # Conf('No. of processes', 'HSM_NPRC', 'n_cpus'), # CHANGELOG 29-11-2023: Removed the n_cpus option
-            Conf('Internal spectral oversampling factor', 'HSM_SPES', 'spectral_sampling'),
-            Conf('Internal spatial oversampling factor', 'HSM_SPAS', 'spatial_sampling'),
+            Conf('Internal spectral oversampling factor', 'MSM_SPES', 'spectral_sampling'),
+            Conf('Internal spatial oversampling factor', 'MSM_SPAS', 'spatial_sampling'),
             ]
 
     def str2bool(var):
@@ -134,8 +131,8 @@ def main(input_parameters):
     str2bool("debug")
     str2bool("adr")
     # str2bool("mci") # CHANGELOG 29-11-2023: Removed the mci option, set to false
-    input_parameters["mci"] = False
-    det_switch = False # CHANGELOG 10-01-2024: Make sure the detector systematics are off
+    #input_parameters["mci"] = False
+    #det_switch = False # CHANGELOG 10-01-2024: Make sure the detector systematics are off
     # str2bool("detector_systematics") # CHANGELOG 10-01-2024: see above line. This option has been removed
 
 
@@ -151,12 +148,12 @@ def main(input_parameters):
     # and also to the terminal
     logger = logging.getLogger()
     std = logging.StreamHandler()
-    std.setFormatter(HSIMFormatter())
+    std.setFormatter(MSIMFormatter())
     std.setLevel(logging.INFO)
     logger.addHandler(std)
 
-    hsimlog = HSIMLoggingHandler()
-    logger.addHandler(hsimlog)
+    msimlog = MSIMLoggingHandler()
+    logger.addHandler(msimlog)
 
 
     # CHANGLOG 29-11-2023: Removed the minimum compliant params
@@ -186,7 +183,7 @@ def main(input_parameters):
         #TODO: fill this out and append any necessary options
         pass
     elif input_parameters["ao_mode"] == "User":
-        simulation_conf.append(Conf('User defined PSF file', 'HSM_UPSF', 'user_defined_psf'))
+        simulation_conf.append(Conf('User defined PSF file', 'MSM_UPSF', 'user_defined_psf'))
 
     # CHANGELOG 29-12-2023: Removed this check
     # # Check that the 60x60 and 120x60 are only used with the V+R grating
@@ -383,14 +380,14 @@ def main(input_parameters):
     #    - Thermal background
     grating = input_parameters["grating"]
     # det_switch = input_parameters["detector_systematics"]
-    det_switch = False # CHANGELOG 10-01-2024: Make sure the detector systematics are off
-    # Cut cubes to correct size if using detector systematics and generate detectors 
-    if det_switch == True and grating != "V+R":
-        logging.info("Trimming datacubes to correct size")
-        output_cube_spec = trim_cube(output_cube_spec, verbose=True)
-    elif det_switch == True and grating == "V+R":
-        logging.warning("IR detector systematics selected for visible grating. Ignoring detector systematics.")
-        det_switch = False
+    #det_switch = False # CHANGELOG 10-01-2024: Make sure the detector systematics are off
+    ## Cut cubes to correct size if using detector systematics and generate detectors 
+    #if det_switch == True and grating != "V+R":
+    #    logging.info("Trimming datacubes to correct size")
+    #    output_cube_spec = trim_cube(output_cube_spec, verbose=True)
+    #elif det_switch == True and grating == "V+R":
+    #    logging.warning("IR detector systematics selected for visible grating. Ignoring detector systematics.")
+    #    det_switch = False
 
     output_cube_spec, output_back_emission, output_transmission, read_noise, dark_current, thermal_background = \
                 sim_detector(input_parameters, output_cube_spec, output_back_emission, output_transmission, output_lambs, \
@@ -408,11 +405,8 @@ def main(input_parameters):
     output_back_emission = output_back_emission.astype(np.float32)
     output_back_emission.shape = (len(output_back_emission), 1, 1)
     output_back_emission_cube = np.zeros_like(output_cube_spec) + output_back_emission
-    if det_switch == True:
-        output_back_emission_cube = trim_cube(output_back_emission_cube)
-
-    if input_parameters["ao_mode"] == "HCAO":
-        output_back_emission_cube *= fpm_mask_rebin
+    #if det_switch == True:
+    #    output_back_emission_cube = trim_cube(output_back_emission_cube)
 
     # - mask saturated pixels
     output_back_emission_cube, saturated_back = mask_saturated_pixels(output_back_emission_cube, grating)
@@ -426,14 +420,9 @@ def main(input_parameters):
     # A. Object exposure
     DIT = input_parameters["exposure_time"]
     NDIT = input_parameters["n_exposures"]
-    # - object exposure with crosstalk
+
+    # - object exposure with background
     sim_object_plus_back = np.random.poisson(abs(output_cube_spec*NDIT)).astype(np.float32)
-    # CHANGELOG 11-01-2024: Removed the crosstalk application as we use visible detectors, not IR
-    # # Apply crosstalk only to NIR detectors
-    # if grating != "V+R":
-    #     if not input_parameters["mci"]:
-    #         logging.info("Applying detector crosstalk")
-    #         sim_object_plus_back = apply_crosstalk(sim_object_plus_back, config_data["crosstalk"])
 
     if np.sum(saturated_obj_back) > 0:
         logging.warning(str(np.sum(saturated_obj_back)) + " pixels are saturated in the obj + back frames")
@@ -443,26 +432,26 @@ def main(input_parameters):
     thermal_cube = np.zeros_like(output_cube_spec) + thermal_background*NDIT
 
     # - read noise and dark current for object exposure
-    if det_switch == False:
-        sim_read_noise1 = np.random.normal(zero_cube, np.sqrt(NDIT)*read_noise).astype(np.float32)
-    else:
-        logging.info("Starting advanced detector systematics")
-        rn_dist = make_rn_dist(input_parameters["detector_tmp_path"])
-        logging.info("- adding systematic effects into observation")
-        sim_det_systematics1 = make_dets(rn_dist, DIT)[0]*np.sqrt(NDIT)
+#    if det_switch == False:
+    sim_read_noise1 = np.random.normal(zero_cube, np.sqrt(NDIT)*read_noise).astype(np.float32)
+#    else:
+#        logging.info("Starting advanced detector systematics")
+#        rn_dist = make_rn_dist(input_parameters["detector_tmp_path"])
+#        logging.info("- adding systematic effects into observation")
+#        sim_det_systematics1 = make_dets(rn_dist, DIT)[0]*np.sqrt(NDIT)
     sim_dark_current1 = np.random.poisson(dark_cube).astype(np.float32)
     sim_thermal1 = np.random.poisson(thermal_cube).astype(np.float32)
 
     # - combine object, read noise and dark current
-    if det_switch == False:
-        sim_total = sim_object_plus_back + sim_read_noise1 + sim_dark_current1 + sim_thermal1
-    else:
-        logging.info("- adding detectors into datacube")
-        sim_object_plus_dets = add_detectors(sim_object_plus_back, sim_det_systematics1)
-        sim_total = sim_object_plus_dets + sim_dark_current1 + sim_thermal1
+#    if det_switch == False:
+    sim_total = sim_object_plus_back + sim_read_noise1 + sim_dark_current1 + sim_thermal1
+#    else:
+#        logging.info("- adding detectors into datacube")
+#        sim_object_plus_dets = add_detectors(sim_object_plus_back, sim_det_systematics1)
+#        sim_total = sim_object_plus_dets + sim_dark_current1 + sim_thermal1
 
     # B. Background exposure
-    #- background with crosstalk
+    #- background only
     sim_back = np.random.poisson(abs(output_back_emission_cube*NDIT)).astype(np.float32)
     # CHANGELOG 11-01-2024: Removed the crosstalk application as we use visible detectors, not IR
     # # Apply crosstalk only to NIR detectors
@@ -475,27 +464,27 @@ def main(input_parameters):
         sim_back[saturated_back] = np.nan
 
     # - read noise and dark current for background exposure
-    if det_switch == False:
-        sim_read_noise2 = np.random.normal(zero_cube, np.sqrt(NDIT)*read_noise).astype(np.float32)
-    else:
-        logging.info("- creating background exposure")
-        sim_det_systematics2 = make_dets(rn_dist, DIT)[0]*np.sqrt(NDIT)
+    #if det_switch == False:
+    sim_read_noise2 = np.random.normal(zero_cube, np.sqrt(NDIT)*read_noise).astype(np.float32)
+    #else:
+    #    logging.info("- creating background exposure")
+    #    sim_det_systematics2 = make_dets(rn_dist, DIT)[0]*np.sqrt(NDIT)
     sim_dark_current2 = np.random.poisson(dark_cube).astype(np.float32)
     sim_thermal2 = np.random.poisson(thermal_cube).astype(np.float32)
 
     # - combine object, read noise and dark current
-    if det_switch == False:
-        sim_total_only_back = sim_back + sim_read_noise2 + sim_dark_current2 + sim_thermal2
-    else:
-        sim_total_only_back = add_detectors(sim_back, sim_det_systematics2) + \
-                              sim_dark_current2 + sim_thermal2
+    #if det_switch == False:
+    sim_total_only_back = sim_back + sim_read_noise2 + sim_dark_current2 + sim_thermal2
+    #else:
+    #    sim_total_only_back = add_detectors(sim_back, sim_det_systematics2) + \
+    #                          sim_dark_current2 + sim_thermal2
 
-        # - create cube of detector noise
-        sim_only_dets = np.zeros_like(sim_total)
-        sim_only_dets = add_detectors(sim_only_dets, sim_det_systematics1)
-        sim_back_dets = np.zeros_like(sim_total)
-        sim_back_dets = add_detectors(sim_back_dets, sim_det_systematics2)
-        logging.info("- advanced detector systematics complete")
+    #    # - create cube of detector noise
+    #    sim_only_dets = np.zeros_like(sim_total)
+    #    sim_only_dets = add_detectors(sim_only_dets, sim_det_systematics1)
+    #    sim_back_dets = np.zeros_like(sim_total)
+    #    sim_back_dets = add_detectors(sim_back_dets, sim_det_systematics2)
+    #    logging.info("- advanced detector systematics complete")
 
 
     # C. Calculate reduced cube: object - background exposure
@@ -505,12 +494,12 @@ def main(input_parameters):
     logging.info("Pipeline interpolation effects")
     # Convolve the reduced cube with a 1pix FWHM Gaussian to account for the 
     # interpolation during the data reduction
-    if input_parameters["mci"]:
-        sigma = 1.325/2.35482 # 5.3mas = 1.325 pix
-        kernel_size = 6
-    else:
-        sigma = 1./2.35482 # pix
-        kernel_size = 5
+    #if input_parameters["mci"]:
+    #    sigma = 1.325/2.35482 # 5.3mas = 1.325 pix
+    #    kernel_size = 6
+    #else:
+    sigma = 1./2.35482 # pix
+    kernel_size = 5
 
     Gauss2D = lambda x, y: np.exp(-(x**2 + y**2)/(2.*sigma**2))
     xgrid = np.linspace(1, kernel_size, kernel_size) - kernel_size*0.5 - 0.5
@@ -528,17 +517,17 @@ def main(input_parameters):
     noise_cube_read_noise = zero_cube + np.sqrt(NDIT)*read_noise # read noise sigma
     noise_cube_dark = dark_cube # dark noise variance
     noise_cube_thermal = thermal_cube # thermal noise variance
-    if det_switch == True:
-        if DIT > 120:
-            noise_cube_read_noise = zero_cube + np.sqrt(NDIT)*config_data['systematics']['rd']
-        else:
-            noise_cube_read_noise = zero_cube + np.sqrt(NDIT)*config_data['systematics']['rd_lowexp']
-        noise_cube_pedestal = zero_cube + np.sqrt(NDIT)*config_data['systematics']['pedestal']
-        noise_cube_c_pink = zero_cube + np.sqrt(NDIT)*config_data['systematics']['c_pink']
-        noise_cube_u_pink = zero_cube + np.sqrt(NDIT)*config_data['systematics']['u_pink']
-        noise_cube_acn = zero_cube + np.sqrt(NDIT)*config_data['systematics']['acn']
-        noise_cube_pca0 = zero_cube + np.sqrt(NDIT)*config_data['systematics']['pca0_amp']
-        noise_cube_dets = zero_cube + np.sqrt(NDIT)*sim_only_dets + np.sqrt(NDIT)*sim_back_dets
+#    if det_switch == True:
+#        if DIT > 120:
+#            noise_cube_read_noise = zero_cube + np.sqrt(NDIT)*config_data['systematics']['rd']
+#        else:
+#            noise_cube_read_noise = zero_cube + np.sqrt(NDIT)*config_data['systematics']['rd_lowexp']
+#        noise_cube_pedestal = zero_cube + np.sqrt(NDIT)*config_data['systematics']['pedestal']
+#        noise_cube_c_pink = zero_cube + np.sqrt(NDIT)*config_data['systematics']['c_pink']
+#        noise_cube_u_pink = zero_cube + np.sqrt(NDIT)*config_data['systematics']['u_pink']
+#        noise_cube_acn = zero_cube + np.sqrt(NDIT)*config_data['systematics']['acn']
+#        noise_cube_pca0 = zero_cube + np.sqrt(NDIT)*config_data['systematics']['pca0_amp']
+#        noise_cube_dets = zero_cube + np.sqrt(NDIT)*sim_only_dets + np.sqrt(NDIT)*sim_back_dets
 
     # CHANGELOG 11-01-2024: Removed the IR detector option
     # if grating != "V+R":
@@ -546,14 +535,14 @@ def main(input_parameters):
     # else:
     n_observations = 1 # no dedicated sky observation
 
-
-    if det_switch == False:
-        noise_cube_total = np.sqrt(noise_cube_object + n_observations*noise_cube_back + n_observations*noise_cube_dark + n_observations*noise_cube_thermal + n_observations*noise_cube_read_noise**2)
-    else:
-        noise_cube_total = np.sqrt(noise_cube_object + n_observations*noise_cube_back + n_observations*noise_cube_dark + n_observations*noise_cube_thermal + n_observations*noise_cube_read_noise**2 + \
-                                   n_observations*noise_cube_pedestal**2 + n_observations*noise_cube_c_pink**2 + n_observations*noise_cube_u_pink**2 + n_observations*noise_cube_acn**2 + \
-                                   n_observations*noise_cube_pca0**2)
-        noise_cube_total_with_dets = np.sqrt(noise_cube_object + n_observations*noise_cube_back + n_observations*noise_cube_dark + n_observations*noise_cube_thermal + noise_cube_dets**2)
+    #if det_switch == False:
+    noise_cube_total = np.sqrt(noise_cube_object + n_observations*noise_cube_back + n_observations*noise_cube_dark 
+                               + n_observations*noise_cube_thermal + n_observations*noise_cube_read_noise**2)
+    #else:
+    #    noise_cube_total = np.sqrt(noise_cube_object + n_observations*noise_cube_back + n_observations*noise_cube_dark + n_observations*noise_cube_thermal + n_observations*noise_cube_read_noise**2 + \
+    #                               n_observations*noise_cube_pedestal**2 + n_observations*noise_cube_c_pink**2 + n_observations*noise_cube_u_pink**2 + n_observations*noise_cube_acn**2 + \
+    #                               n_observations*noise_cube_pca0**2)
+    #    noise_cube_total_with_dets = np.sqrt(noise_cube_object + n_observations*noise_cube_back + n_observations*noise_cube_dark + n_observations*noise_cube_thermal + noise_cube_dets**2)
     #
     logging.info("Saving output")
     debug_plots = False # CHANGELOG 10-01-2024: Changed debug_plots to false to stop code from breaking
@@ -588,26 +577,26 @@ def main(input_parameters):
         plt.plot(w, e*ph2en_conv_fac, label="telescope", color=colors[-2])
 
         #TODO: change this 
-        if not input_parameters["mci"]:
-            # HARMONI parts
-            total_instrument_em = np.zeros_like(lambs_extended)
-            total_instrument_tr = np.ones_like(lambs_extended)
-            harmoni_files_em = sorted(glob.glob(base_filename + "_HARMONI_*_em.txt"))
+        #if not input_parameters["mci"]:
+        # MAVIS parts
+        total_instrument_em = np.zeros_like(lambs_extended)
+        total_instrument_tr = np.ones_like(lambs_extended)
+        mavis_files_em = sorted(glob.glob(base_filename + "_MAVIS_*_em.txt"))
 
-            for harmoni_file, color in zip(harmoni_files_em, colors):
-                # Read part emission
-                w, e = np.loadtxt(harmoni_file, unpack=True)
-                m = re.search('.+HARMONI_(.+)_em.txt', harmoni_file)
-                # and throughput
-                w, t = np.loadtxt(base_filename + "_HARMONI_" + m.group(1) + "_tr.txt", unpack=True)
-                plt.plot(w, e/total_instrument_tr*ph2en_conv_fac, label=m.group(1), color=color, ls="--", lw=1.2)
-                total_instrument_em = total_instrument_em*t + e
-                total_instrument_tr = total_instrument_tr*t
+        for harmoni_file, color in zip(mavis_files_em, colors):
+            # Read part emission
+            w, e = np.loadtxt(mavis_file, unpack=True)
+            m = re.search('.+MAVIS_(.+)_em.txt', harmoni_file)
+            # and throughput
+            w, t = np.loadtxt(base_filename + "_MAVIS_" + m.group(1) + "_tr.txt", unpack=True)
+            plt.plot(w, e/total_instrument_tr*ph2en_conv_fac, label=m.group(1), color=color, ls="--", lw=1.2)
+            total_instrument_em = total_instrument_em*t + e
+            total_instrument_tr = total_instrument_tr*t
 
-        else:
-            # mci estimate
-            w, total_instrument_em = np.loadtxt(base_filename + "_HARMONI_mci_em.txt", unpack=True)
-            w, total_instrument_tr = np.loadtxt(base_filename + "_HARMONI_mci_tr.txt", unpack=True)
+        #else:
+        #    # mci estimate
+        #    w, total_instrument_em = np.loadtxt(base_filename + "_HARMONI_mci_em.txt", unpack=True)
+        #    w, total_instrument_tr = np.loadtxt(base_filename + "_HARMONI_mci_tr.txt", unpack=True)
 
         plt.plot(w, total_instrument_em/total_instrument_tr*ph2en_conv_fac, label="MAVIS total", color="red") # CHANGELOG 10-01-2024: Changed text from HARMONI to MAVIS
         logging.info("MAVIS emission at input focal plane at {:.4f} um = {:.4e} W/m2/um/sr".format(np.median(w), np.median(total_instrument_em/total_instrument_tr*ph2en_conv_fac))) # CHANGELOG 10-01-2024: Changed text from HARMONI to MAVIS
@@ -639,20 +628,19 @@ def main(input_parameters):
         total_tr *= e
 
         #TODO: change this
-        if not input_parameters["mci"]:
-            total_instrument_tr = np.ones_like(total_tr)
-            # HARMONI parts
-            harmoni_files_tr = sorted(glob.glob(base_filename + "_HARMONI_*tr.txt"))
-            for harmoni_file, color in zip(harmoni_files_tr, colors):
-                w, e = np.loadtxt(harmoni_file, unpack=True)
-                m = re.search('.+HARMONI_(.+)_tr.txt', harmoni_file)
-                plt.plot(w, e, label=m.group(1), color=color, ls="--", lw=1.2)
-                total_instrument_tr *= e
-                total_tr *= e
-        else:
-            # mci estimate
-            w, total_instrument_tr = np.loadtxt(base_filename + "_HARMONI_mci_tr.txt", unpack=True)
-            total_tr *= total_instrument_tr
+        total_instrument_tr = np.ones_like(total_tr)
+        # MAVIS parts
+        mavis_files_tr = sorted(glob.glob(base_filename + "_MAVIS_*tr.txt"))
+        for mavis_file, color in zip(mavis_files_tr, colors):
+            w, e = np.loadtxt(mavis_file, unpack=True)
+            m = re.search('.+HARMONI_(.+)_tr.txt', mavis_file)
+            plt.plot(w, e, label=m.group(1), color=color, ls="--", lw=1.2)
+            total_instrument_tr *= e
+            total_tr *= e
+        #else:
+         #   # mci estimate
+         #   w, total_instrument_tr = np.loadtxt(base_filename + "_HARMONI_mci_tr.txt", unpack=True)
+         #   total_tr *= total_instrument_tr
 
         plt.plot(w, total_instrument_tr, label="MAVIS total", color="red") # CHANGELOG 10-01-2024: Changed text from HARMONI to MAVIS
         
@@ -718,7 +706,7 @@ def main(input_parameters):
     for _ in simulation_conf:
         head[_.header] = (str(input_parameters[_.value]), _.name)
 
-    head['HSM_TIME'] = str(datetime.datetime.utcnow())
+    head['MSM_TIME'] = str(datetime.datetime.utcnow())
 
     # CHANGELOG 11-01-2024: Removed the crosstalk application as we use visible detectors, not IR
     # # Apply crosstalk to the noiseless cubes
@@ -892,10 +880,10 @@ def main(input_parameters):
     save_fits_cube(base_filename + "_PSF.fits", psf_spaxel, "PSF", head_PSF)
 
 
-    if hsimlog.count_error == 0 and hsimlog.count_warning == 0:
-        logging.info('Simulation OK - ' + str(hsimlog.count_error) + " errors and " + str(hsimlog.count_warning) + " warnings")
+    if msimlog.count_error == 0 and msimlog.count_warning == 0:
+        logging.info('Simulation OK - ' + str(msimlog.count_error) + " errors and " + str(msimlog.count_warning) + " warnings")
     else:
-        logging.warning('Simulation with problems - ' + str(hsimlog.count_error) + " errors and " + str(hsimlog.count_warning) + " warnings")
+        logging.warning('Simulation with problems - ' + str(msimlog.count_error) + " errors and " + str(msimlog.count_warning) + " warnings")
 
 
     logger.removeHandler(std)
@@ -904,12 +892,12 @@ def main(input_parameters):
 
 
 def save_fits_cube(filename, data, typ, header):
-    header['HSM_TYPE'] = typ
+    header['MSM_TYPE'] = typ
     fits.writeto(filename, data, header=header, overwrite=True, output_verify="silentfix")
 
 
 
-class HSIMLoggingHandler(logging.Handler):
+class MSIMLoggingHandler(logging.Handler):
     def __init__(self):
         self.count_warning = 0
         self.count_error = 0
@@ -922,7 +910,7 @@ class HSIMLoggingHandler(logging.Handler):
             self.count_error += 1
 
 
-class HSIMFormatter(logging.Formatter):
+class MSIMFormatter(logging.Formatter):
 
     def __init__(self):
         logging.Formatter.__init__(self, "%(message)s")
