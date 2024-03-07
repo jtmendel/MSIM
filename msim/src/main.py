@@ -12,7 +12,7 @@ Developers: Miguel Pereira Santaella, Laurence Routledge, Simon Zieleniewsk, Sar
 
 Version 1.0.0 (2024-01-10)
 --------------------------
-- Removed MCI and multi-CPU options from the simulation configuration parameters.
+- Removed MCI options from the simulation configuration parameters.
 - Manually set the MCI parameter to false.
 - Changed from HARMONI AO options to MAVIS AO options.
 - Removed code for unused AO options.
@@ -33,7 +33,7 @@ import collections
 import glob
 import re
 import datetime
-import multiprocessing as mp
+import multiprocess as mp
 import os.path
 import logging
 import warnings
@@ -118,7 +118,7 @@ def main(input_parameters):
             Conf('ADR', 'MSM_ADR', 'adr'),
             Conf('Seed', 'MSM_SEED', 'noise_seed'),
             Conf('AO', 'MSM_AO', 'ao_mode'),
-            # Conf('No. of processes', 'HSM_NPRC', 'n_cpus'), # CHANGELOG 29-11-2023: Removed the n_cpus option
+            Conf('No. of processes', 'MSM_NPRC', 'n_cpus'), 
             Conf('Internal spectral oversampling factor', 'MSM_SPES', 'spectral_sampling'),
             Conf('Internal spatial oversampling factor', 'MSM_SPAS', 'spatial_sampling'),
             ]

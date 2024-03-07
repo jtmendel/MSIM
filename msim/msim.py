@@ -23,7 +23,7 @@ import os
 import sys
 import argparse
 import configparser
-import multiprocessing as mp
+import multiprocess as mp
 import collections
 import subprocess
 
@@ -101,7 +101,7 @@ def get_grating_list():
 
 if __name__ == "__main__":
 
-    hsim_version = get_version_number()
+    msim_version = get_version_number()
     
     Parameter = collections.namedtuple("Parameter", "name,help,type,default,choices")
     Parameter.__new__.__defaults__ = (None, None, str, None, None)
@@ -130,7 +130,7 @@ if __name__ == "__main__":
                 Parameter("scattered_sky", "Scattered sky fraction [%%]", type=float, default = 20),
                 Parameter("extra_jitter", "Additional telescope PSF blur [mas]", type=str, default = "0"),
                 Parameter("noise_seed", "Noise random number generator seed", type=int, default = 100),
-                # Parameter("n_cpus", "Number of processors", type=int, default = 1), # CHANGELOG 19-12-2023: Removed this option as it was breaking the program
+                Parameter("n_cpus", "Number of processors", type=int, default = 1), 
                 Parameter("spectral_sampling", "Internal spectral oversampling factor", type=float, default = -1),
                 Parameter("spatial_sampling", "Internal spatial oversampling factor", type=float, default = -1),
               ]
@@ -138,7 +138,7 @@ if __name__ == "__main__":
     # Define argument parser
     parser = argparse.ArgumentParser(argument_default=argparse.SUPPRESS, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     
-    parser.add_argument("-v", "--version", action="version", version="HARMONI Simulator version " + hsim_version) #TODO: update this to MAVIS and check the right git file for the version number
+    parser.add_argument("-v", "--version", action="version", version="MAVIS Simulator version " + msim_version) #TODO: update this to MAVIS and check the right git file for the version number
     parser.add_argument("-b", dest="batch_mode", action="store_true", help="Batch mode. Do not show MAVISIM GUI") # CHANGELOG 10-01-2024: Changed the help text to MAVISIM
     parser.add_argument("-c", dest="config_file", type=str, help="Simulation configuration file")
     
@@ -169,12 +169,12 @@ if __name__ == "__main__":
         config = configparser.ConfigParser()
         config.read(args.config_file)
         
-        if "HSIM" not in config:
-            print("ERROR: [HSIM] section not found in configuration file " + args.config_file)
+        if "MSIM" not in config:
+            print("ERROR: [MSIM] section not found in configuration file " + args.config_file)
             sys.exit()
         
-        for key in config["HSIM"]:
-            value = config["HSIM"][key]
+        for key in config["MSIM"]:
+            value = config["MSIM"][key]
             key = key.lower()
             if key not in input_parameters:
                 print("ERROR: Unknown option '" +  key + "' in configuration file " + args.config_file)
@@ -281,7 +281,7 @@ if __name__ == "__main__":
                 
                 return None
 
-        class HSIM_GUI():
+        class MSIM_GUI():
             def __init__(self, parent):
                 
                 # Menu 
@@ -290,7 +290,7 @@ if __name__ == "__main__":
                 
                 file_menu = Menu(menubar)
                 def OnAbout():
-                    messagebox.showinfo("HSIM", r"HSIM " + get_version_number() + "\nHARMONI simulation pipeline\nhttps://github.com/HARMONI-ELT/HSIM") #TODO: change this
+                    messagebox.showinfo("MSIM", r"MSIM " + get_version_number() + "\nMAVIS simulation pipeline\n(based on https://github.com/HARMONI-ELT/HSIM)") #TODO: change this
 
                 
                 file_menu.add_command(label="About", command=OnAbout)
@@ -399,7 +399,7 @@ if __name__ == "__main__":
                 create_field("adr", panel_misc.add_field("ADR on/off", Checkbutton, default=0, height=1000))
                 # create_field("detector_systematics", panel_misc.add_field("Detector systematics", Checkbutton))  # CHANGELOG 10-01-2024: Removed this option as we use visible detectors, not IR
                 #create_field("detector_tmp_path", panel_misc.add_field("Detector tmp dir", Button, command=lambda : browse_dir(self)))
-                # create_field("n_cpus", panel_misc.add_field("No. of processors (1-" + str(mp.cpu_count())+")", Entry)) # CHANGELOG 19-12-2023: Removed this option as it broke the program
+                create_field("n_cpus", panel_misc.add_field("No. of processors (1-" + str(mp.cpu_count())+")", Entry)) 
                 create_field("noise_seed", panel_misc.add_field("Noise seed", Entry))
                 panel_misc.add_field("Internal oversampling:", None)
                 create_field("spectral_sampling", panel_misc.add_field("   Spectral (default = -1)", Entry))
@@ -431,6 +431,6 @@ if __name__ == "__main__":
         font_size_title = "helvetica 20 bold"
         default_font = "helvetica 13"
         root.option_add("*Font", default_font)
-        gui = HSIM_GUI(root)
+        gui = MSIM_GUI(root)
 
         root.mainloop()
