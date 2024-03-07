@@ -305,8 +305,8 @@ def define_psf(input_parameters, _jitter, _fov, _psfscale, rotation=None):
         logging.info("Reading PSF: " + config_data["PSD_file"][AO_mode])
         #psf_inp, head = fits.getdata(input_parameters["user_defined_psf"], 0, header=True, memmap=True)
         #psf_wave = fits.getdata(input_parameters["user_defined_psf"], ext=1) 
-        psf_inp, head = fits.getdata(os.path.join(psf_path, config_data["PSD_file"][AO_mode]), 0, header=True, memmap=True)
-        psf_wave = fits.getdata(os.path.join(psf_path, config_data["PSD_file"][AO_mode]), 1)
+        psf_inp, head = fits.getdata(os.path.join(psf_path, config_data["PSD_file"][AO_mode]), 1, header=True, memmap=True)
+        psf_wave = fits.getdata(os.path.join(psf_path, config_data["PSD_file"][AO_mode]), 2)
         
         if psf_inp.ndim != 3:
             raise MSIMError("User PSF must have 3 dimensions.")
