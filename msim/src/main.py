@@ -271,9 +271,9 @@ def main(input_parameters):
 
     logging.info("# end configuration file")
 
-    #
-    np.random.seed(input_parameters["noise_seed"])
-
+    #initialize random number generation
+    rng = np.random.default_rng(input_parameters["noise_seed"])
+    
     # Read input FITS cube and resample depending on grating and spaxel scale
     # output is in ph/s/m2/um/arcsec2 units
     cube, head, lambs, input_spec_res = init_cube(input_parameters["input_cube"], input_parameters["grating"], input_parameters["spaxel_scale"])
@@ -300,19 +300,22 @@ def main(input_parameters):
     #    - Sky transmission
     #    - Moon
     #    - Atmospheric differential refraction
-    simulated_data = sim_sky(input_parameters, *simulated_data, head, *lambda_data, input_spec_res, debug_plots=debug_plots, output_file=base_filename)
+    simulated_data = sim_sky(input_parameters, *simulated_data, head, *lambda_data, input_spec_res, 
+                             debug_plots=debug_plots, output_file=base_filename)
 
     # 2 - Telescope:
     #    - PSF + Jitter
     #    - Telescope background
     #    - Telescope transmission
-    simulated_data, psf_internal, psf_lambda = sim_telescope(input_parameters, *simulated_data, *lambda_data, debug_plots=debug_plots, output_file=base_filename)
+    simulated_data, psf_internal, psf_lambda = sim_telescope(input_parameters, *simulated_data, *lambda_data, 
+                                                             debug_plots=debug_plots, output_file=base_filename)
 
     # 3 - Instrument:
     #    - LSF
     #    - Instrument background
     #    - Instrument transmission
-    simulated_data, LSF_width_A = sim_instrument(input_parameters, *simulated_data, *lambda_data, input_spec_res, debug_plots=debug_plots, output_file=base_filename)
+    simulated_data, LSF_width_A = sim_instrument(input_parameters, *simulated_data, *lambda_data, input_spec_res, 
+                                                 debug_plots=debug_plots, output_file=base_filename)
 
     cube_exp, back_emission, transmission, fpm_mask = simulated_data
 
@@ -422,7 +425,11 @@ def main(input_parameters):
     NDIT = input_parameters["n_exposures"]
 
     # - object exposure with background
-    sim_object_plus_back = np.random.poisson(abs(output_cube_spec*NDIT)).astype(np.float32)
+    try:
+        sim_object_plus_back = rng.poisson(abs(output_cube_spec*NDIT)).astype(np.float32)
+    except:
+        sim_object_plus_back = rng.normal(loc=abs(output_cube_spec*NDIT), scale=np.sqrt(abs(output_cube_spec*NDIT))).astype(np.float32)
+
 
     if np.sum(saturated_obj_back) > 0:
         logging.warning(str(np.sum(saturated_obj_back)) + " pixels are saturated in the obj + back frames")
@@ -433,14 +440,14 @@ def main(input_parameters):
 
     # - read noise and dark current for object exposure
 #    if det_switch == False:
-    sim_read_noise1 = np.random.normal(zero_cube, np.sqrt(NDIT)*read_noise).astype(np.float32)
+    sim_read_noise1 = rng.normal(zero_cube, np.sqrt(NDIT)*read_noise).astype(np.float32)
 #    else:
 #        logging.info("Starting advanced detector systematics")
 #        rn_dist = make_rn_dist(input_parameters["detector_tmp_path"])
 #        logging.info("- adding systematic effects into observation")
 #        sim_det_systematics1 = make_dets(rn_dist, DIT)[0]*np.sqrt(NDIT)
-    sim_dark_current1 = np.random.poisson(dark_cube).astype(np.float32)
-    sim_thermal1 = np.random.poisson(thermal_cube).astype(np.float32)
+    sim_dark_current1 = rng.poisson(dark_cube).astype(np.float32)
+    sim_thermal1 = rng.poisson(thermal_cube).astype(np.float32)
 
     # - combine object, read noise and dark current
 #    if det_switch == False:
@@ -452,7 +459,10 @@ def main(input_parameters):
 
     # B. Background exposure
     #- background only
-    sim_back = np.random.poisson(abs(output_back_emission_cube*NDIT)).astype(np.float32)
+    try:
+        sim_back = rng.poisson(abs(output_back_emission_cube*NDIT)).astype(np.float32)
+    except:
+        sim_back = rng.normal(loc=abs(output_back_emission_cube*NDIT), scale=np.sqrt(abs(output_back_emission_cube*NDIT))).astype(np.float32)
     # CHANGELOG 11-01-2024: Removed the crosstalk application as we use visible detectors, not IR
     # # Apply crosstalk only to NIR detectors
     # if grating != "V+R":
@@ -465,12 +475,12 @@ def main(input_parameters):
 
     # - read noise and dark current for background exposure
     #if det_switch == False:
-    sim_read_noise2 = np.random.normal(zero_cube, np.sqrt(NDIT)*read_noise).astype(np.float32)
+    sim_read_noise2 = rng.normal(zero_cube, np.sqrt(NDIT)*read_noise).astype(np.float32)
     #else:
     #    logging.info("- creating background exposure")
     #    sim_det_systematics2 = make_dets(rn_dist, DIT)[0]*np.sqrt(NDIT)
-    sim_dark_current2 = np.random.poisson(dark_cube).astype(np.float32)
-    sim_thermal2 = np.random.poisson(thermal_cube).astype(np.float32)
+    sim_dark_current2 = rng.poisson(dark_cube).astype(np.float32)
+    sim_thermal2 = rng.poisson(thermal_cube).astype(np.float32)
 
     # - combine object, read noise and dark current
     #if det_switch == False:
@@ -633,7 +643,7 @@ def main(input_parameters):
         mavis_files_tr = sorted(glob.glob(base_filename + "_MAVIS_*tr.txt"))
         for mavis_file, color in zip(mavis_files_tr, colors):
             w, e = np.loadtxt(mavis_file, unpack=True)
-            m = re.search('.+HARMONI_(.+)_tr.txt', mavis_file)
+            m = re.search('.+MAVIS_(.+)_tr.txt', mavis_file)
             plt.plot(w, e, label=m.group(1), color=color, ls="--", lw=1.2)
             total_instrument_tr *= e
             total_tr *= e

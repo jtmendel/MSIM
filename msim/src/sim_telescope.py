@@ -55,7 +55,7 @@ def process_lambda(params, lamb, image, px, py, pback):
     conv_image = fftconvolve(padding_plane, psf) + pback
     return params, conv_image
     
-    
+
 counter = None
 result_cube = None
 bar_str = None
@@ -175,7 +175,7 @@ def sim_telescope(input_parameters, cube, back_emission, transmission, ext_lambs
     
     bar_str = "[ {:2d}% {:" + str(len(str(len(lambs)))) + "d}/{:" + str(len(str(len(lambs)))) + "d} ]"
     
-    # CHANGELOG 29-12-2023: Removed multiprocessing as it was causing issues with the code 
+    # check multiprocessing option
     ncpus = min(input_parameters["n_cpus"], mp.cpu_count())
     logging.info(("Using {:d} CPU" + ("s" if ncpus > 1 else "")).format(ncpus))
     if ncpus > 1:
