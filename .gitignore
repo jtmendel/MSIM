@@ -1,5 +1,4 @@
 *.pyc
 *~
 *DS_Store
-
 msim/output_cubes/*
