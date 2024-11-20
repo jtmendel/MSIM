@@ -202,7 +202,7 @@ def sim_instrument(input_parameters, cube, back_emission, transmission, ext_lamb
 
     #add some MAVIS parts!
     mavis.addPart(InstrumentPart("AO bench", "mavis_AOM_throughput.csv", TTel, AreaIns))
-    mavis.addPart(InstrumentPart("Na notch", 'mavis_notch.csv', TTel, AreaIns))
+    #mavis.addPart(InstrumentPart("Na notch", 'mavis_notch.csv', TTel, AreaIns))
 
     #grating selection
     grating = input_parameters['grating']
