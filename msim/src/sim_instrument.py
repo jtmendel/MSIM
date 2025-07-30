@@ -70,10 +70,10 @@ class InstrumentPart:
 
 
     def calcThroughputAndEmission(self, lamb, DIT, output_file=""):
-        throughput = self.calcThroughput(lamb, self.filename)
+        throughput = self.calcThroughput(lamb, self.filename) * self.global_scaling
         
         #also get emissivity (kinda?)
-        emissivity = (1. - throughput)/self.global_scaling
+        emissivity = (1. - throughput/self.global_scaling)
                 
         #thermal nonsense
         emission = emissivity*blackbody(lamb, self.temp) #J/s/m2/lambda(um)/arcsec2
@@ -199,21 +199,39 @@ def sim_instrument(input_parameters, cube, back_emission, transmission, ext_lamb
     logging.debug("ecoldtrap = {:6.3f} rwindow = {:6.3f}".format(ecoldtrap, rwindow))
     logging.debug("-------")
     
+    #included some kind of global scaling parameter to deal with budget vs. requirement sensitivity
+    tpt_model = input_parameters['throughput_model']
+    if tpt_model == 'budget':
+        scale_factor = 1.
+    elif tpt_model == 'requirement':
+        scale_factor = 0.55
 
     #add some MAVIS parts!
-    mavis.addPart(InstrumentPart("AO bench", "mavis_AOM_throughput.csv", TTel, AreaIns))
-    #mavis.addPart(InstrumentPart("Na notch", 'mavis_notch.csv', TTel, AreaIns))
+    mavis.addPart(InstrumentPart("AO bench", "mavis_AOM_throughput_2025-03-14_spec.csv", TTel, AreaIns, global_scaling=scale_factor))
 
     #grating selection
     grating = input_parameters['grating']
+    spaxel = input_parameters['spaxel_scale']
     if grating == 'HR-Blue':
-        mavis.addPart(InstrumentPart("Spectrograph + " + grating, "hrblue_grating.csv", TTel, AreaIns))
+        if spaxel == '25x25':
+            mavis.addPart(InstrumentPart("Spectrograph + " + grating, "hrblue_grating_25mas_2025-03-06.csv", TTel, AreaIns, global_scaling=scale_factor))
+        elif spaxel == '50x50':
+            mavis.addPart(InstrumentPart("Spectrograph + " + grating, "hrblue_grating_50mas_2025-03-06.csv", TTel, AreaIns, global_scaling=scale_factor))
     elif grating == 'LR-Blue':
-        mavis.addPart(InstrumentPart("Spectrograph + " + grating, "lrblue_grating.csv", TTel, AreaIns))
+        if spaxel == '25x25':
+            mavis.addPart(InstrumentPart("Spectrograph + " + grating, "lrblue_grating_25mas_2025-03-06.csv", TTel, AreaIns, global_scaling=scale_factor))
+        elif spaxel == '50x50':
+            mavis.addPart(InstrumentPart("Spectrograph + " + grating, "lrblue_grating_50mas_2025-03-06.csv", TTel, AreaIns, global_scaling=scale_factor))
     elif grating == 'HR-Red':
-        mavis.addPart(InstrumentPart("Spectrograph + " + grating, "hrred_grating.csv", TTel, AreaIns))
+        if spaxel == '25x25':
+            mavis.addPart(InstrumentPart("Spectrograph + " + grating, "hrred_grating_25mas_2025-03-06.csv", TTel, AreaIns, global_scaling=scale_factor))
+        elif spaxel == '50x50':
+            mavis.addPart(InstrumentPart("Spectrograph + " + grating, "hrred_grating_50mas_2025-03-06.csv", TTel, AreaIns, global_scaling=scale_factor))
     elif grating == 'LR-Red':
-        mavis.addPart(InstrumentPart("Spectrograph + " + grating, "lrred_grating.csv", TTel, AreaIns))
+        if spaxel == '25x25':
+            mavis.addPart(InstrumentPart("Spectrograph + " + grating, "lrred_grating_25mas_2025-03-06.csv", TTel, AreaIns, global_scaling=scale_factor))
+        elif spaxel == '50x50':
+            mavis.addPart(InstrumentPart("Spectrograph + " + grating, "lrred_grating_50mas_2025-03-06.csv", TTel, AreaIns, global_scaling=scale_factor))
 
     ################################ MAVIS frameworking ################################
     

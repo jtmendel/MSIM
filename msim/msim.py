@@ -115,6 +115,7 @@ if __name__ == "__main__":
                 Parameter("n_exposures", "Number of exposures", type=int),
                 Parameter("ao_mode", "AO Mode", choices = ["MCAO", "NOAO", "Airy"]), # CHANGELOG 29-12-2023: Removed all HARMONI modes, added MCAO for MAVIS
                 Parameter("user_defined_psf", "User defined PSF FITS file when ao-mode is set to User", default="''"),
+                Parameter("throughput_model", "Throughput Model", default = "budget", choices = ["budget","requirement"]),
                 # CHANGELOG 29-12-2023: Removed HARMONI AO params
                 # Parameter("ao_star_hmag", "H magnitude of the LTAO AO star", type=float, default=17.5, choices = [15., 17.5, 19.]),
                 # Parameter("ao_star_distance", "Distance from the HARMONI FoV center to the LTAO AO star [arcsec]", type=int, default=30, choices = [15, 30, 45]),
@@ -389,6 +390,8 @@ if __name__ == "__main__":
                 create_field("air_mass", panel_telescope.add_field("Air mass", OptionMenu, default=air_mass_choices[0], extra=air_mass_choices))
                 create_field("moon_illumination", panel_telescope.add_field("Moon illumination", OptionMenu, extra=list(map(str, [0, 0.5, 1]))))
                 
+                throughput_choices = list(parameter_actions["throughput_model"].choices)
+                create_field("throughput_model", panel_telescope.add_field("Throughput model", OptionMenu, default=throughput_choices[0], extra=throughput_choices))
 
                 # Misc frame
                 panel_misc = panel_gui(parent, "Miscellaneous", 3)

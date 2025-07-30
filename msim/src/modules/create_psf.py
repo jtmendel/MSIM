@@ -302,11 +302,24 @@ def define_psf(input_parameters, _jitter, _fov, _psfscale, rotation=None):
     elif AO_mode == "MCAO":
         #JTM modified to work with PSF cube (wave, x, y) to deal with wavelength
         #dependence. This means that user_psf is now an interpolator object, not an image.
-        logging.info("Reading PSF: " + config_data["PSD_file"][AO_mode])
-        #psf_inp, head = fits.getdata(input_parameters["user_defined_psf"], 0, header=True, memmap=True)
-        #psf_wave = fits.getdata(input_parameters["user_defined_psf"], ext=1) 
-        psf_inp, head = fits.getdata(os.path.join(psf_path, config_data["PSD_file"][AO_mode]), 1, header=True, memmap=True)
-        psf_wave = fits.getdata(os.path.join(psf_path, config_data["PSD_file"][AO_mode]), 2)
+
+        #need to parse this for dependence on the scale changer
+        spaxel = input_parameters['spaxel_scale']
+        if spaxel == '25x25':
+            psffile = 'psf_mcao_msim_25mas.fits.fz'
+        elif spaxel == '50x50':
+            psffile = 'psf_mcao_msim_50mas.fits.fz' 
+
+        #logging.info("Reading PSF: " + config_data["PSD_file"][AO_mode])
+        ##psf_inp, head = fits.getdata(input_parameters["user_defined_psf"], 0, header=True, memmap=True)
+        ##psf_wave = fits.getdata(input_parameters["user_defined_psf"], ext=1) 
+        #psf_inp, head = fits.getdata(os.path.join(psf_path, config_data["PSD_file"][AO_mode]), 1, header=True, memmap=True)
+        #psf_wave = fits.getdata(os.path.join(psf_path, config_data["PSD_file"][AO_mode]), 2)
+        
+        #pull the necessary file directly
+        logging.info("Reading PSF: " + psffile)
+        psf_inp, head = fits.getdata(os.path.join(psf_path, psffile), 1, header=True, memmap=True)
+        psf_wave = fits.getdata(os.path.join(psf_path, psffile), 2)
         
         if psf_inp.ndim != 3:
             raise MSIMError("User PSF must have 3 dimensions.")
