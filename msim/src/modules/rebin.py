@@ -47,10 +47,9 @@ def rebin1d(xout, xin, yin):
     else:
         # rebin if output is coarser
         temp = np.zeros((len(xout)), dtype=np.float64)
-        #Loop on output values
-        box = float(dx_out)/float(dx_in)
         
-        in_i = np.interp(xout - dx_out*0.5, xin, range(len(xin)))
+        #Loop on output values
+        in_i = np.interp(xout - dx_out*0.5, xin - dx_in*0.5, range(len(xin)))
         
         for i in tqdm(range(len(xout))): # CHANGELOG 09-01-2024: added a progress bar
             rstart = in_i[i]
@@ -109,8 +108,7 @@ def rebin_cube_1d(xout, xin, cube):
     else:
         # rebin if output is coarser
         #Loop on output values
-        box = float(dx_out)/float(dx_in)
-        in_i = np.interp(xout - dx_out*0.5, xin, range(len(xin)))
+        in_i = np.interp(xout - dx_out*0.5, xin - dx_in*0.5, range(len(xin)))
 
         for i in tqdm(range(len(xout))): # CHANGELOG 09-01-2024: added a progress bar
             rstart = in_i[i]
