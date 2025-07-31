@@ -123,6 +123,7 @@ class Instrument:
         emission = np.zeros_like(lamb)
     
         for part in self.parts:
+            logging.info("- getting throughput from {0}".format(part))
             part_t, part_emi = part.calcThroughputAndEmission(lamb, DIT, output_file=output_file)
             
             # logging.info("part_t: %s, part_emi: %s", part_t, part_emi) # CHANGELOG 09-01-2024: added for my troubleshooting
