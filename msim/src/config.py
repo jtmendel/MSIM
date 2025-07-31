@@ -35,8 +35,8 @@ SpaxelScaleInfo = collections.namedtuple('SpaxelScaleInfo', 'xscale, yscale, psf
 config_data = {
     'detector':{
         "avg":{
-            'read_noise': {"vis":3.0}, # e/pix 
-            'dark_current': {"vis":3./3600}, 
+            'read_noise': {"vis":2.5}, # e/pix 
+            'dark_current': {"vis":4./3600}, 
             'qe':'file', 
         },
     },
