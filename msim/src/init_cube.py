@@ -167,7 +167,7 @@ def spatial_res(datacube, head, spax):
     if abs(xmax) < min_internal_pix or abs(ymax) < min_internal_pix:
         raise MSIMError('The input cube spatial dimension is too small. Minimum size is {s}x{s} mas'.format(s=int(min_internal_pix*spax_scale.psfscale)))
     
-
+    print(new_sampling_x, head['CDELT1'])
     if new_sampling_x != head['CDELT1'] or new_sampling_y != head['CDELT2']:
         
         # regrid image and conserve flux
@@ -180,7 +180,8 @@ def spatial_res(datacube, head, spax):
 
         new_cube = np.zeros((z, len(ygrid_out), len(xgrid_out)), dtype=float)
 
-        if abs(new_sampling_x) < abs(head['CDELT1']):
+        if (head['CDELT1']-new_sampling_x)/new_sampling_x > 1e-5:
+        #if abs(new_sampling_x) < abs(head['CDELT1']):
             logging.warning('Interpolating data cube - spatial')
             for k in np.arange(0, z):
                 #image = interp2d(xgrid_in, ygrid_in, datacube[k,:,:], kind='linear')
@@ -188,10 +189,14 @@ def spatial_res(datacube, head, spax):
                 f = RectBivariateSpline(xgrid_in, ygrid_in, datacube[k,:,:].T, kx=1, ky=1)
                 new_cube[k,:,:] = f(xgrid_out, ygrid_out).T
             
-        else:
+        elif (head['CDELT1']-new_sampling_x)/new_sampling_x < -1e-5:
             logging.info('Rebinning data cube - spatial')
             for k in np.arange(0, z):
                 new_cube[k,:,:] = frebin2d(datacube[k,:,:], (len(xgrid_out), len(ygrid_out)))
+        else:
+            logging.info('Keeping data cube')
+            for k in np.arange(0, z):
+                new_cube[k,:,:] = datacube[k,:,:]
             
     else:
         
