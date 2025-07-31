@@ -822,7 +822,7 @@ def main(input_parameters):
 
 def save_fits_cube(filename, data, typ, header):
     header['MSM_TYPE'] = typ
-    fits.writeto(filename, data, header=header, overwrite=True, output_verify="silentfix")
+    fits.writeto(filename, data.astype(np.float32), header=header, overwrite=True, output_verify="silentfix")
 
 
 
