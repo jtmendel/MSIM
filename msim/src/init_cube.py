@@ -228,21 +228,20 @@ def init_cube(datacube, grating, spax):
 		resampled cube
 
 	'''
-	
-	#OPEN INPUT FITS file
-	if os.path.isfile(datacube) == True and os.path.splitext(datacube)[1].lower() == '.fits':
-		cube, head = fits.getdata(datacube, 0, header=True, memmap=True)
-		#If not FITS file, try passing datacube directly
-	else:
-		try:
-			cube = datacube.data
-			head = datacube.header
-		except:
-			raise MSIMError('Please use FITS input file - ' + str(datacube))
-	
-	if np.isnan(np.sum(cube)):
-		raise MSIMError('NaN values are not allowed in the input cube')
-	
+
+    #OPEN INPUT FITS file
+    if os.path.isfile(datacube) == True and os.path.splitext(datacube)[-1].lower() == '.fits':
+        cube, head = fits.getdata(datacube, 0, header=True, memmap=True)
+        #If not FITS file, try passing datacube directly
+    elif os.path.isfile(datacube) == True and os.path.splitext(datacube)[-1].lower() == '.fz':
+        cube, head = fits.getdata(datacube, 1, header=True, memmap=True)
+    else:
+        try:
+            cube = datacube.data
+            head = datacube.header
+        except:
+            raise MSIMError('Please use FITS input file - ' + str(datacube))
+
 	
 	#Check that datacube has required headers to be processed in simulator
 	required_headers = ['NAXIS1', 'NAXIS2', 'NAXIS3', 'CDELT1',
