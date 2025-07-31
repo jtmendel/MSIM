@@ -29,205 +29,205 @@ from src.modules.rebin import *
 
 
 def spectral_res(datacube, head, grating, wavels):
-	'''Function that takes input datacube and rebins it to the
-	chosen spectral resolution. It interpolates all spaxels along wavelength axis
-	then extracts pixel values for each datacube wavelength channel. Function combines both
-	spectral resolution choice and datacube chopping in wavelength axis.
+    '''Function that takes input datacube and rebins it to the
+    chosen spectral resolution. It interpolates all spaxels along wavelength axis
+    then extracts pixel values for each datacube wavelength channel. Function combines both
+    spectral resolution choice and datacube chopping in wavelength axis.
 
-	Inputs:
-		datacube: object datacube
-		head: header file for object datacube
-		grating: string representing chosen grating.
-		wavels: wavelength array for datacube
+    Inputs:
+        datacube: object datacube
+        head: header file for object datacube
+        grating: string representing chosen grating.
+        wavels: wavelength array for datacube
 
-	Outputs:
-		new_cube: rebinned datacube
-		head: updated header file
-		new_wavels: new wavelength array for datacube
-		input_spec_res: input spectral resolution [micron]
-	'''
+    Outputs:
+        new_cube: rebinned datacube
+        head: updated header file
+        new_wavels: new wavelength array for datacube
+        input_spec_res: input spectral resolution [micron]
+    '''
 
-	logging.info('# Spectral resolution and wavelength range')
-	logging.info('Chosen grating: ' + grating)
-	z, y, x = datacube.shape
-	
-	try:
-		bandws = config_data['gratings'][grating]
-		new_res = (bandws.lmin + bandws.lmax)/(2.*bandws.R)
-		lamb_per_pix = new_res/config_data["spectral_sampling"]["internal"]
-	except:
-		raise MSIMError(grating + ' is not a valid grating. Valid options are: ' + ", ".join(sorted(config_data['gratings'].keys())))
-	
-	input_spec_res = head['SPECRES'] # micron
-	
-	if input_spec_res < head['CDELT3']:
-		logging.warning('Input resolution (%.1f AA) < Input sampling (%.1f AA). Assuming resultion = 2*sampling' % (input_spec_res*10000., head['CDELT3']*10000.))
-		input_spec_res = 2.*head['CDELT3']
-	
-	if input_spec_res > new_res:
-		logging.warning("The input cube spectral resolution is lower than the MAVIS grating resolution. Assuming input resolution = MAVIS resolution") # CHANGELOG 10-01-2024: Changed text from HARMONI to MAVIS
-		input_spec_res = new_res*0.99
-	elif input_spec_res > 0.5*new_res:
-		logging.warning("The input cube spectral resolution is lower than 2 times the MAVIS grating resolution") # CHANGELOG 10-01-2024: Changed text from HARMONI to MAVIS
-	elif input_spec_res == 0.:
-		logging.warning("The input cube spectral resolution is not defined")
-	
-	
-	logging.info('Input resolution = %.1f AA' % (input_spec_res*10000.))
-	logging.info('Input sampling = %.1f AA' % (head['CDELT3']*10000.))
-	logging.info('Output resolution = %.1f AA' % (new_res*10000.))
-	logging.info('Internal sampling = %.1f AA' % (lamb_per_pix*10000.))
+    logging.info('# Spectral resolution and wavelength range')
+    logging.info('Chosen grating: ' + grating)
+    z, y, x = datacube.shape
+    
+    try:
+        bandws = config_data['gratings'][grating]
+        new_res = (bandws.lmin + bandws.lmax)/(2.*bandws.R)
+        lamb_per_pix = new_res/config_data["spectral_sampling"]["internal"]
+    except:
+        raise MSIMError(grating + ' is not a valid grating. Valid options are: ' + ", ".join(sorted(config_data['gratings'].keys())))
+    
+    input_spec_res = head['SPECRES'] # micron
+    
+    if input_spec_res < head['CDELT3']:
+        logging.warning('Input resolution (%.1f AA) < Input sampling (%.1f AA). Assuming resultion = 2*sampling' % (input_spec_res*10000., head['CDELT3']*10000.))
+        input_spec_res = 2.*head['CDELT3']
+    
+    if input_spec_res > new_res:
+        logging.warning("The input cube spectral resolution is lower than the MAVIS grating resolution. Assuming input resolution = MAVIS resolution") # CHANGELOG 10-01-2024: Changed text from HARMONI to MAVIS
+        input_spec_res = new_res*0.99
+    elif input_spec_res > 0.5*new_res:
+        logging.warning("The input cube spectral resolution is lower than 2 times the MAVIS grating resolution") # CHANGELOG 10-01-2024: Changed text from HARMONI to MAVIS
+    elif input_spec_res == 0.:
+        logging.warning("The input cube spectral resolution is not defined")
+    
+    
+    logging.info('Input resolution = %.1f AA' % (input_spec_res*10000.))
+    logging.info('Input sampling = %.1f AA' % (head['CDELT3']*10000.))
+    logging.info('Output resolution = %.1f AA' % (new_res*10000.))
+    logging.info('Internal sampling = %.1f AA' % (lamb_per_pix*10000.))
 
-	#Interpolate datacube onto regular pixel grid
-	if wavels[0] <= bandws.lmin and wavels[-1] >= bandws.lmax: # cube wavelength range larger than grating choice
-		logging.warning('Cube wavelength range larger than grating: chopping down to grating range')
-		new_wavels = np.arange(bandws.lmin, bandws.lmax, lamb_per_pix)
-		
-	elif wavels[0] > bandws.lmin and wavels[-1] < bandws.lmax: # cube wavelength range inside grating choice
-		logging.info('Cube wavelength range within grating range')
-		if len(wavels) > 1:
-			new_wavels = np.arange(wavels[0], wavels[-1], lamb_per_pix)
-		else:
-			logging.warning('Input cube only has 1 slice. This slice will be duplicated in the internal cube')
-			spec_size = 36
-			new_wavels = np.arange(wavels[0] - spec_size*0.5*lamb_per_pix, wavels[0] + spec_size*0.5*lamb_per_pix, lamb_per_pix)
-			wavels = new_wavels
-	
-	elif wavels[0] < bandws.lmin and wavels[-1] < bandws.lmax and wavels[-1] > bandws.lmin: # cube short wavelength longer than grating shortest wavelength
-		logging.warning('Cube shortest wavelength shorter than grating')
-		new_wavels = np.arange(bandws.lmin, wavels[-1], lamb_per_pix)
-		
-	elif wavels[0] > bandws.lmin and wavels[0] < bandws.lmax and wavels[-1] > bandws.lmax: # cube short wavelength longer than grating shortest wavelength
-		logging.warning('Cube longest wavelength longer than grating')
-		new_wavels = np.arange(wavels[0], bandws.lmax, lamb_per_pix)
-		
-	else:
-		raise MSIMError('The wavelength range of the input cube ' + str(wavels[0]) + " - " + str(wavels[-1]) + 
+    #Interpolate datacube onto regular pixel grid
+    if wavels[0] <= bandws.lmin and wavels[-1] >= bandws.lmax: # cube wavelength range larger than grating choice
+        logging.warning('Cube wavelength range larger than grating: chopping down to grating range')
+        new_wavels = np.arange(bandws.lmin, bandws.lmax, lamb_per_pix)
+        
+    elif wavels[0] > bandws.lmin and wavels[-1] < bandws.lmax: # cube wavelength range inside grating choice
+        logging.info('Cube wavelength range within grating range')
+        if len(wavels) > 1:
+            new_wavels = np.arange(wavels[0], wavels[-1], lamb_per_pix)
+        else:
+            logging.warning('Input cube only has 1 slice. This slice will be duplicated in the internal cube')
+            spec_size = 36
+            new_wavels = np.arange(wavels[0] - spec_size*0.5*lamb_per_pix, wavels[0] + spec_size*0.5*lamb_per_pix, lamb_per_pix)
+            wavels = new_wavels
+    
+    elif wavels[0] < bandws.lmin and wavels[-1] < bandws.lmax and wavels[-1] > bandws.lmin: # cube short wavelength longer than grating shortest wavelength
+        logging.warning('Cube shortest wavelength shorter than grating')
+        new_wavels = np.arange(bandws.lmin, wavels[-1], lamb_per_pix)
+        
+    elif wavels[0] > bandws.lmin and wavels[0] < bandws.lmax and wavels[-1] > bandws.lmax: # cube short wavelength longer than grating shortest wavelength
+        logging.warning('Cube longest wavelength longer than grating')
+        new_wavels = np.arange(wavels[0], bandws.lmax, lamb_per_pix)
+        
+    else:
+        raise MSIMError('The wavelength range of the input cube ' + str(wavels[0]) + " - " + str(wavels[-1]) + 
                         " is not valid for the " + grating + " grating ("  + str(bandws.lmin) + " - " + str(bandws.lmax) + ")")
 
-	
-	# regrid spectrum and conserve flux
-	if len(wavels) !=  len(new_wavels):
-		logging.info('Interpolating data cube - spectral')
-		new_cube = rebin_cube_1d(new_wavels, wavels, datacube)
-	else:
-		new_cube = datacube
-	
-	
-	#Update header
-	head['CRPIX3'] = 1
-	head['CRVAL3'] = new_wavels[0]
-	head['CDELT3'] = lamb_per_pix
-	head['NAXIS3'] = len(new_wavels)
-	head['SPECRES'] = new_res
+    
+    # regrid spectrum and conserve flux
+    if len(wavels) !=  len(new_wavels):
+        logging.info('Interpolating data cube - spectral')
+        new_cube = rebin_cube_1d(new_wavels, wavels, datacube)
+    else:
+        new_cube = datacube
+    
+    
+    #Update header
+    head['CRPIX3'] = 1
+    head['CRVAL3'] = new_wavels[0]
+    head['CDELT3'] = lamb_per_pix
+    head['NAXIS3'] = len(new_wavels)
+    head['SPECRES'] = new_res
 
-	logging.info('# Spectral resolution and wavelength range - Done')
-	
-	#Return new_datacube, new_wavels, updated_header
-	return new_cube, head, new_wavels, input_spec_res
-	
-	
+    logging.info('# Spectral resolution and wavelength range - Done')
+    
+    #Return new_datacube, new_wavels, updated_header
+    return new_cube, head, new_wavels, input_spec_res
+    
+    
 def spatial_res(datacube, head, spax):
-	'''Function that takes input datacube and rebins it to the
-	chosen spatial resolution. 
+    '''Function that takes input datacube and rebins it to the
+    chosen spatial resolution. 
 
-	Inputs:
-		datacube: object datacube
-		head: header file for object datacube
-		spax: spatial pixel (spaxel) scale 
+    Inputs:
+        datacube: object datacube
+        head: header file for object datacube
+        spax: spatial pixel (spaxel) scale 
 
-	Outputs:
-		new_cube: rebinned datacube
-		head: updated header file
-	'''
+    Outputs:
+        new_cube: rebinned datacube
+        head: updated header file
+    '''
 
-	logging.info('# Spatial resolution')
-	logging.info('Chosen spaxel scale: ' + str(spax))
+    logging.info('# Spatial resolution')
+    logging.info('Chosen spaxel scale: ' + str(spax))
 
-	z, y, x = datacube.shape
+    z, y, x = datacube.shape
 
-	try:
-		spax_scale = config_data['spaxel_scale'][spax]
-	except:
-		raise MSIMError(spax + ' is not a valid spaxel scale. Valid options are: ' + ", ".join(sorted(config_data['spaxel_scale'].keys())))
+    try:
+        spax_scale = config_data['spaxel_scale'][spax]
+    except:
+        raise MSIMError(spax + ' is not a valid spaxel scale. Valid options are: ' + ", ".join(sorted(config_data['spaxel_scale'].keys())))
 
-	logging.info('Input sampling = %.2f x %.2f mas' % (head['CDELT1'], head['CDELT2']))
-	new_sampling_x = spax_scale.psfscale*np.sign(head['CDELT1'])
-	new_sampling_y = spax_scale.psfscale*np.sign(head['CDELT2'])
-	
-	x0 = head['CRVAL1'] + head['CDELT1']*(1 - head['CRPIX1'])
-	y0 = head['CRVAL2'] + head['CDELT2']*(1 - head['CRPIX2'])
-	
-	logging.info('Internal sampling = %.2f x %.2f mas' % (new_sampling_x, new_sampling_y))
+    logging.info('Input sampling = %.2f x %.2f mas' % (head['CDELT1'], head['CDELT2']))
+    new_sampling_x = spax_scale.psfscale*np.sign(head['CDELT1'])
+    new_sampling_y = spax_scale.psfscale*np.sign(head['CDELT2'])
+    
+    x0 = head['CRVAL1'] + head['CDELT1']*(1 - head['CRPIX1'])
+    y0 = head['CRVAL2'] + head['CDELT2']*(1 - head['CRPIX2'])
+    
+    logging.info('Internal sampling = %.2f x %.2f mas' % (new_sampling_x, new_sampling_y))
 
-	min_internal_pix = 3.*spax_scale.yscale/spax_scale.psfscale
-	
-	xmax = head['CDELT1']*(x-1)
-	ymax = head['CDELT2']*(y-1)
-	if abs(xmax) < min_internal_pix or abs(ymax) < min_internal_pix:
-		raise MSIMError('The input cube spatial dimension is too small. Minimum size is {s}x{s} mas'.format(s=int(min_internal_pix*spax_scale.psfscale)))
-	
+    min_internal_pix = 3.*spax_scale.yscale/spax_scale.psfscale
+    
+    xmax = head['CDELT1']*(x-1)
+    ymax = head['CDELT2']*(y-1)
+    if abs(xmax) < min_internal_pix or abs(ymax) < min_internal_pix:
+        raise MSIMError('The input cube spatial dimension is too small. Minimum size is {s}x{s} mas'.format(s=int(min_internal_pix*spax_scale.psfscale)))
+    
 
-	if new_sampling_x != head['CDELT1'] or new_sampling_y != head['CDELT2']:
-		
-		# regrid image and conserve flux
-		
-		xgrid_in = np.linspace(0, abs(xmax), x)
-		ygrid_in = np.linspace(0, abs(ymax), y)
-		
-		xgrid_out = np.arange(0, abs(xmax), abs(new_sampling_x))
-		ygrid_out = np.arange(0, abs(ymax), abs(new_sampling_y))
+    if new_sampling_x != head['CDELT1'] or new_sampling_y != head['CDELT2']:
+        
+        # regrid image and conserve flux
+        
+        xgrid_in = np.linspace(0, abs(xmax), x)
+        ygrid_in = np.linspace(0, abs(ymax), y)
+        
+        xgrid_out = np.arange(0, abs(xmax), abs(new_sampling_x))
+        ygrid_out = np.arange(0, abs(ymax), abs(new_sampling_y))
 
-		new_cube = np.zeros((z, len(ygrid_out), len(xgrid_out)), dtype=float)
+        new_cube = np.zeros((z, len(ygrid_out), len(xgrid_out)), dtype=float)
 
-		if abs(new_sampling_x) < abs(head['CDELT1']):
-			logging.warning('Interpolating data cube - spatial')
-			for k in np.arange(0, z):
-				#image = interp2d(xgrid_in, ygrid_in, datacube[k,:,:], kind='linear')
+        if abs(new_sampling_x) < abs(head['CDELT1']):
+            logging.warning('Interpolating data cube - spatial')
+            for k in np.arange(0, z):
+                #image = interp2d(xgrid_in, ygrid_in, datacube[k,:,:], kind='linear')
                 #new_cube[k,:,:] = image(xgrid_out, ygrid_out)
                 f = RectBivariateSpline(xgrid_in, ygrid_in, datacube[k,:,:].T, kx=1, ky=1)
                 new_cube[k,:,:] = f(xgrid_out, ygrid_out).T
-			
-		else:
-			logging.info('Rebinning data cube - spatial')
-			for k in np.arange(0, z):
-				new_cube[k,:,:] = frebin2d(datacube[k,:,:], (len(xgrid_out), len(ygrid_out)))
-			
-	else:
-		
-		new_cube = datacube
-		
-	#Update header
-	head['CRPIX1'] = 1
-	head['CRVAL1'] = x0
-	head['CDELT1'] = new_sampling_x
-	head['NAXIS1'] = new_cube.shape[2]
-	
-	head['CRPIX2'] = 1
-	head['CRVAL2'] = y0
-	head['CDELT2'] = new_sampling_y
-	head['NAXIS2'] = new_cube.shape[1]
-	
+            
+        else:
+            logging.info('Rebinning data cube - spatial')
+            for k in np.arange(0, z):
+                new_cube[k,:,:] = frebin2d(datacube[k,:,:], (len(xgrid_out), len(ygrid_out)))
+            
+    else:
+        
+        new_cube = datacube
+        
+    #Update header
+    head['CRPIX1'] = 1
+    head['CRVAL1'] = x0
+    head['CDELT1'] = new_sampling_x
+    head['NAXIS1'] = new_cube.shape[2]
+    
+    head['CRPIX2'] = 1
+    head['CRVAL2'] = y0
+    head['CDELT2'] = new_sampling_y
+    head['NAXIS2'] = new_cube.shape[1]
+    
 
-	logging.info('# Spatial resolution - Done')
-	
-	#Return new_datacube, updated_header
-	return new_cube, head
+    logging.info('# Spatial resolution - Done')
+    
+    #Return new_datacube, updated_header
+    return new_cube, head
 
 
 def init_cube(datacube, grating, spax):
-	''' Read input fits cube and resamples spatial and spectral 
-		depending on selected grating and spaxel scale
+    ''' Read input fits cube and resamples spatial and spectral 
+        depending on selected grating and spaxel scale
 
-	Inputs:
-		datacube: Input high resolution datacube (RA, DEC, lambda)
-		grating: Spectral grating
-		spax: spatial pixel (spaxel) scale 
+    Inputs:
+        datacube: Input high resolution datacube (RA, DEC, lambda)
+        grating: Spectral grating
+        spax: spatial pixel (spaxel) scale 
 
-	Outputs:
-		resampled cube
+    Outputs:
+        resampled cube
 
-	'''
+    '''
 
     #OPEN INPUT FITS file
     if os.path.isfile(datacube) == True and os.path.splitext(datacube)[-1].lower() == '.fits':
@@ -242,117 +242,117 @@ def init_cube(datacube, grating, spax):
         except:
             raise MSIMError('Please use FITS input file - ' + str(datacube))
 
-	
-	#Check that datacube has required headers to be processed in simulator
-	required_headers = ['NAXIS1', 'NAXIS2', 'NAXIS3', 'CDELT1',
-			'CDELT2', 'CDELT3', 'CRVAL3', 'BUNIT',
-			'CRPIX3', 'CUNIT1', 'CUNIT2', 'CUNIT3',
-			'CTYPE1', 'CTYPE2', 'CTYPE3', 'SPECRES']
-	
-	missing_headers = []
-	
-	for i in required_headers:
-		if i not in head:
-			logging.error('Missing header: ' + i)
-			missing_headers.append(i)
-			
-	if len(missing_headers) != 0:
-		raise MSIMError('Missing headers. Please correct datacube header.')
-	
-	# define CRVAL{1,2} and CRPIX{1,2} if not included in the header
-	if "CRVAL1" not in head:
-		head["CRVAL1"] = 0
-	if "CRPIX1" not in head:
-		head["CRPIX1"] = 1
-		
-	if "CRVAL2" not in head:
-		head["CRVAL2"] = 0
-	if "CRPIX2" not in head:
-		head["CRPIX2"] = 1
-	
-	# Check axes types
-	ctype1 = map(str.lower, ['ra', 'x', 'RA---SIN', 'RA---TAN'])
-	ctype2 = map(str.lower, ['dec', 'y', 'DEC--SIN', 'DEC--TAN'])
-	ctype3 = map(str.lower, ['wavelength'])
-	
-	if head['CTYPE1'].lower() not in ctype1:
-		raise MSIMError("CTYPE1 must be set to any of the following: " + ", ".join(ctype1))
-	
-	if head['CTYPE2'].lower() not in ctype2:
-		raise MSIMError("CTYPE2 must be set to any of the following: " + ", ".join(ctype2))
-	
-	if head['CTYPE3'].lower() not in ctype3:
-		raise MSIMError("CTYPE3 must be set to any of the following: " + ", ".join(ctype3))
-	
-	# Check axes units
-	try:
-		head['CDELT1'] *= u.Unit(head["CUNIT1"]).to("mas")
-		head['CUNIT1'] = 'mas'
-	except ValueError as e:
-		raise MSIMError("CUNIT1 error: " + str(e))
-	
-	try:
-		head['CDELT2'] *= u.Unit(head["CUNIT2"]).to("mas")
-		head['CUNIT2'] = 'mas'
-	except ValueError as e:
-		raise MSIMError("CUNIT2 error: " + str(e))
-	
-	try:
-		factor = u.Unit(head["CUNIT3"]).to("micron")
-		head['CDELT3'] *= factor
-		head['SPECRES'] *= factor
-		head['CRVAL3'] *= factor
-		head['CUNIT3'] = 'micron'
-	except ValueError as e:
-		MSIMError("CUNIT3 error: " + str(e))
-		
-	
-	# Create wavelength arrray 
-	lambs = head['CRVAL3'] + head['CDELT3']*(np.linspace(1, head['NAXIS3'], head['NAXIS3']) - head['CRPIX3'])
-	
-	
-	# Rescale datacube to chosen spectral resolution
-	cube, head, lambs, input_spec_res = spectral_res(cube, head, grating, lambs)
-	
-	# Rescale datacube to chosen spatial resolution
-	cube, head = spatial_res(cube, head, spax)
+    
+    #Check that datacube has required headers to be processed in simulator
+    required_headers = ['NAXIS1', 'NAXIS2', 'NAXIS3', 'CDELT1',
+            'CDELT2', 'CDELT3', 'CRVAL3', 'BUNIT',
+            'CRPIX3', 'CUNIT1', 'CUNIT2', 'CUNIT3',
+            'CTYPE1', 'CTYPE2', 'CTYPE3', 'SPECRES']
+    
+    missing_headers = []
+    
+    for i in required_headers:
+        if i not in head:
+            logging.error('Missing header: ' + i)
+            missing_headers.append(i)
+            
+    if len(missing_headers) != 0:
+        raise MSIMError('Missing headers. Please correct datacube header.')
+    
+    # define CRVAL{1,2} and CRPIX{1,2} if not included in the header
+    if "CRVAL1" not in head:
+        head["CRVAL1"] = 0
+    if "CRPIX1" not in head:
+        head["CRPIX1"] = 1
+        
+    if "CRVAL2" not in head:
+        head["CRVAL2"] = 0
+    if "CRPIX2" not in head:
+        head["CRPIX2"] = 1
+    
+    # Check axes types
+    ctype1 = map(str.lower, ['ra', 'x', 'RA---SIN', 'RA---TAN'])
+    ctype2 = map(str.lower, ['dec', 'y', 'DEC--SIN', 'DEC--TAN'])
+    ctype3 = map(str.lower, ['wavelength'])
+    
+    if head['CTYPE1'].lower() not in ctype1:
+        raise MSIMError("CTYPE1 must be set to any of the following: " + ", ".join(ctype1))
+    
+    if head['CTYPE2'].lower() not in ctype2:
+        raise MSIMError("CTYPE2 must be set to any of the following: " + ", ".join(ctype2))
+    
+    if head['CTYPE3'].lower() not in ctype3:
+        raise MSIMError("CTYPE3 must be set to any of the following: " + ", ".join(ctype3))
+    
+    # Check axes units
+    try:
+        head['CDELT1'] *= u.Unit(head["CUNIT1"]).to("mas")
+        head['CUNIT1'] = 'mas'
+    except ValueError as e:
+        raise MSIMError("CUNIT1 error: " + str(e))
+    
+    try:
+        head['CDELT2'] *= u.Unit(head["CUNIT2"]).to("mas")
+        head['CUNIT2'] = 'mas'
+    except ValueError as e:
+        raise MSIMError("CUNIT2 error: " + str(e))
+    
+    try:
+        factor = u.Unit(head["CUNIT3"]).to("micron")
+        head['CDELT3'] *= factor
+        head['SPECRES'] *= factor
+        head['CRVAL3'] *= factor
+        head['CUNIT3'] = 'micron'
+    except ValueError as e:
+        MSIMError("CUNIT3 error: " + str(e))
+        
+    
+    # Create wavelength arrray 
+    lambs = head['CRVAL3'] + head['CDELT3']*(np.linspace(1, head['NAXIS3'], head['NAXIS3']) - head['CRPIX3'])
+    
+    
+    # Rescale datacube to chosen spectral resolution
+    cube, head, lambs, input_spec_res = spectral_res(cube, head, grating, lambs)
+    
+    # Rescale datacube to chosen spatial resolution
+    cube, head = spatial_res(cube, head, spax)
 
 
-	z, y, x = cube.shape
-	logging.info('Internal input cube size x={x} y={y} z={z}'.format(x=x, y=y, z=z))
+    z, y, x = cube.shape
+    logging.info('Internal input cube size x={x} y={y} z={z}'.format(x=x, y=y, z=z))
 
-	#Energy-to-Photons Conversion factor will depend on head['FUNITS'] value
-	logging.info('Flux units = ' + head['BUNIT'])
-	
-	if head['BUNIT'] == "erg/s/cm2/A/arcsec2":
-		head['BUNIT'] = "erg/s/cm2/AA/arcsec2"
-		logging.warning("The input flux units should be erg/s/cm2/AA/arcsec2 instead of erg/s/cm2/A/arcsec2.")
-	if head['BUNIT'] == "J/s/m2/A/arcsec2":
-		head['BUNIT'] = "J/s/m2/AA/arcsec2"
-		logging.warning("The input flux units should be J/s/m2/AA/arcsec2 instead of J/s/m2/A/arcsec2.")
-		
-	try:
-		original_cube_units = u.Unit(head['BUNIT'])
-		internal_cube_units = u.Unit("ph/s/m2/um/arcsec2")
-		
-		flux_factor = ((np.ones(len(lambs))*original_cube_units*u.arcsec**2).to(internal_cube_units*u.arcsec**2, equivalencies=u.spectral_density(lambs*u.micron))).base
-		flux_factor.shape = (len(lambs),1,1)
-		cube *= flux_factor
-		
-		head['BUNIT'] = str(internal_cube_units)
-		
-	except (ValueError, u.UnitConversionError) as e:
-		raise MSIMError("BUNIT error: " + str(e))
-	
-	logging.info('The flux range of the input cube is {:.2e} - {:.2e} ph/s/m2/um/arcsec2'.format(np.min(cube), np.max(cube)))
+    #Energy-to-Photons Conversion factor will depend on head['FUNITS'] value
+    logging.info('Flux units = ' + head['BUNIT'])
+    
+    if head['BUNIT'] == "erg/s/cm2/A/arcsec2":
+        head['BUNIT'] = "erg/s/cm2/AA/arcsec2"
+        logging.warning("The input flux units should be erg/s/cm2/AA/arcsec2 instead of erg/s/cm2/A/arcsec2.")
+    if head['BUNIT'] == "J/s/m2/A/arcsec2":
+        head['BUNIT'] = "J/s/m2/AA/arcsec2"
+        logging.warning("The input flux units should be J/s/m2/AA/arcsec2 instead of J/s/m2/A/arcsec2.")
+        
+    try:
+        original_cube_units = u.Unit(head['BUNIT'])
+        internal_cube_units = u.Unit("ph/s/m2/um/arcsec2")
+        
+        flux_factor = ((np.ones(len(lambs))*original_cube_units*u.arcsec**2).to(internal_cube_units*u.arcsec**2, equivalencies=u.spectral_density(lambs*u.micron))).base
+        flux_factor.shape = (len(lambs),1,1)
+        cube *= flux_factor
+        
+        head['BUNIT'] = str(internal_cube_units)
+        
+    except (ValueError, u.UnitConversionError) as e:
+        raise MSIMError("BUNIT error: " + str(e))
+    
+    logging.info('The flux range of the input cube is {:.2e} - {:.2e} ph/s/m2/um/arcsec2'.format(np.min(cube), np.max(cube)))
 
-	spax_scale = config_data['spaxel_scale'][spax]
-	
-	area_spaxel = spax_scale.xscale*spax_scale.yscale/1000.**2 # arcsec2
-	um_per_pixel = head['CDELT3'] # micron/pixel
-	factor = config_data["telescope"]["area"]*area_spaxel*um_per_pixel
-	
-	logging.info('The flux range of the input cube is {:.2e} - {:.2e} ph/s/output pixel'.format(np.min(cube)*factor, np.max(cube)*factor))
+    spax_scale = config_data['spaxel_scale'][spax]
+    
+    area_spaxel = spax_scale.xscale*spax_scale.yscale/1000.**2 # arcsec2
+    um_per_pixel = head['CDELT3'] # micron/pixel
+    factor = config_data["telescope"]["area"]*area_spaxel*um_per_pixel
+    
+    logging.info('The flux range of the input cube is {:.2e} - {:.2e} ph/s/output pixel'.format(np.min(cube)*factor, np.max(cube)*factor))
 
 
-	return cube, head, lambs, input_spec_res
+    return cube, head, lambs, input_spec_res
