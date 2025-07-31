@@ -181,7 +181,6 @@ def spatial_res(datacube, head, spax):
         new_cube = np.zeros((z, len(ygrid_out), len(xgrid_out)), dtype=float)
 
         if (head['CDELT1']-new_sampling_x)/new_sampling_x > 1e-5:
-        #if abs(new_sampling_x) < abs(head['CDELT1']):
             logging.warning('Interpolating data cube - spatial')
             for k in np.arange(0, z):
                 #image = interp2d(xgrid_in, ygrid_in, datacube[k,:,:], kind='linear')

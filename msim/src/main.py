@@ -382,15 +382,6 @@ def main(input_parameters):
     #    - Read noise
     #    - Thermal background
     grating = input_parameters["grating"]
-    # det_switch = input_parameters["detector_systematics"]
-    #det_switch = False # CHANGELOG 10-01-2024: Make sure the detector systematics are off
-    ## Cut cubes to correct size if using detector systematics and generate detectors 
-    #if det_switch == True and grating != "V+R":
-    #    logging.info("Trimming datacubes to correct size")
-    #    output_cube_spec = trim_cube(output_cube_spec, verbose=True)
-    #elif det_switch == True and grating == "V+R":
-    #    logging.warning("IR detector systematics selected for visible grating. Ignoring detector systematics.")
-    #    det_switch = False
 
     output_cube_spec, output_back_emission, output_transmission, read_noise, dark_current, thermal_background = \
                 sim_detector(input_parameters, output_cube_spec, output_back_emission, output_transmission, output_lambs, \
@@ -401,6 +392,7 @@ def main(input_parameters):
     # Generate noiseless outputs
     # - object + background
     output_cube_spec = output_cube_spec.astype(np.float32)
+
     # - mask saturated pixels
     output_cube_spec, saturated_obj_back = mask_saturated_pixels(output_cube_spec, grating)
 
@@ -408,8 +400,6 @@ def main(input_parameters):
     output_back_emission = output_back_emission.astype(np.float32)
     output_back_emission.shape = (len(output_back_emission), 1, 1)
     output_back_emission_cube = np.zeros_like(output_cube_spec) + output_back_emission
-    #if det_switch == True:
-    #    output_back_emission_cube = trim_cube(output_back_emission_cube)
 
     # - mask saturated pixels
     output_back_emission_cube, saturated_back = mask_saturated_pixels(output_back_emission_cube, grating)
@@ -430,7 +420,6 @@ def main(input_parameters):
     except:
         sim_object_plus_back = rng.normal(loc=abs(output_cube_spec*NDIT), scale=np.sqrt(abs(output_cube_spec*NDIT))).astype(np.float32)
 
-
     if np.sum(saturated_obj_back) > 0:
         logging.warning(str(np.sum(saturated_obj_back)) + " pixels are saturated in the obj + back frames")
         sim_object_plus_back[saturated_obj_back] = np.nan
@@ -439,23 +428,12 @@ def main(input_parameters):
     thermal_cube = np.zeros_like(output_cube_spec) + thermal_background*NDIT
 
     # - read noise and dark current for object exposure
-#    if det_switch == False:
     sim_read_noise1 = rng.normal(zero_cube, np.sqrt(NDIT)*read_noise).astype(np.float32)
-#    else:
-#        logging.info("Starting advanced detector systematics")
-#        rn_dist = make_rn_dist(input_parameters["detector_tmp_path"])
-#        logging.info("- adding systematic effects into observation")
-#        sim_det_systematics1 = make_dets(rn_dist, DIT)[0]*np.sqrt(NDIT)
     sim_dark_current1 = rng.poisson(dark_cube).astype(np.float32)
     sim_thermal1 = rng.poisson(thermal_cube).astype(np.float32)
 
     # - combine object, read noise and dark current
-#    if det_switch == False:
     sim_total = sim_object_plus_back + sim_read_noise1 + sim_dark_current1 + sim_thermal1
-#    else:
-#        logging.info("- adding detectors into datacube")
-#        sim_object_plus_dets = add_detectors(sim_object_plus_back, sim_det_systematics1)
-#        sim_total = sim_object_plus_dets + sim_dark_current1 + sim_thermal1
 
     # B. Background exposure
     #- background only
@@ -463,39 +441,18 @@ def main(input_parameters):
         sim_back = rng.poisson(abs(output_back_emission_cube*NDIT)).astype(np.float32)
     except:
         sim_back = rng.normal(loc=abs(output_back_emission_cube*NDIT), scale=np.sqrt(abs(output_back_emission_cube*NDIT))).astype(np.float32)
-    # CHANGELOG 11-01-2024: Removed the crosstalk application as we use visible detectors, not IR
-    # # Apply crosstalk only to NIR detectors
-    # if grating != "V+R":
-    #     if not input_parameters["mci"]:
-    #         sim_back = apply_crosstalk(sim_back, config_data["crosstalk"])
 
     if np.sum(saturated_back) > 0:
         logging.warning(str(np.sum(saturated_back)) + " pixels are saturated in the back frames")
         sim_back[saturated_back] = np.nan
 
     # - read noise and dark current for background exposure
-    #if det_switch == False:
     sim_read_noise2 = rng.normal(zero_cube, np.sqrt(NDIT)*read_noise).astype(np.float32)
-    #else:
-    #    logging.info("- creating background exposure")
-    #    sim_det_systematics2 = make_dets(rn_dist, DIT)[0]*np.sqrt(NDIT)
     sim_dark_current2 = rng.poisson(dark_cube).astype(np.float32)
     sim_thermal2 = rng.poisson(thermal_cube).astype(np.float32)
 
     # - combine object, read noise and dark current
-    #if det_switch == False:
     sim_total_only_back = sim_back + sim_read_noise2 + sim_dark_current2 + sim_thermal2
-    #else:
-    #    sim_total_only_back = add_detectors(sim_back, sim_det_systematics2) + \
-    #                          sim_dark_current2 + sim_thermal2
-
-    #    # - create cube of detector noise
-    #    sim_only_dets = np.zeros_like(sim_total)
-    #    sim_only_dets = add_detectors(sim_only_dets, sim_det_systematics1)
-    #    sim_back_dets = np.zeros_like(sim_total)
-    #    sim_back_dets = add_detectors(sim_back_dets, sim_det_systematics2)
-    #    logging.info("- advanced detector systematics complete")
-
 
     # C. Calculate reduced cube: object - background exposure
     sim_reduced = sim_total - sim_total_only_back
@@ -504,10 +461,6 @@ def main(input_parameters):
     logging.info("Pipeline interpolation effects")
     # Convolve the reduced cube with a 1pix FWHM Gaussian to account for the 
     # interpolation during the data reduction
-    #if input_parameters["mci"]:
-    #    sigma = 1.325/2.35482 # 5.3mas = 1.325 pix
-    #    kernel_size = 6
-    #else:
     sigma = 1./2.35482 # pix
     kernel_size = 5
 
@@ -527,17 +480,6 @@ def main(input_parameters):
     noise_cube_read_noise = zero_cube + np.sqrt(NDIT)*read_noise # read noise sigma
     noise_cube_dark = dark_cube # dark noise variance
     noise_cube_thermal = thermal_cube # thermal noise variance
-#    if det_switch == True:
-#        if DIT > 120:
-#            noise_cube_read_noise = zero_cube + np.sqrt(NDIT)*config_data['systematics']['rd']
-#        else:
-#            noise_cube_read_noise = zero_cube + np.sqrt(NDIT)*config_data['systematics']['rd_lowexp']
-#        noise_cube_pedestal = zero_cube + np.sqrt(NDIT)*config_data['systematics']['pedestal']
-#        noise_cube_c_pink = zero_cube + np.sqrt(NDIT)*config_data['systematics']['c_pink']
-#        noise_cube_u_pink = zero_cube + np.sqrt(NDIT)*config_data['systematics']['u_pink']
-#        noise_cube_acn = zero_cube + np.sqrt(NDIT)*config_data['systematics']['acn']
-#        noise_cube_pca0 = zero_cube + np.sqrt(NDIT)*config_data['systematics']['pca0_amp']
-#        noise_cube_dets = zero_cube + np.sqrt(NDIT)*sim_only_dets + np.sqrt(NDIT)*sim_back_dets
 
     # CHANGELOG 11-01-2024: Removed the IR detector option
     # if grating != "V+R":
@@ -545,15 +487,9 @@ def main(input_parameters):
     # else:
     n_observations = 1 # no dedicated sky observation
 
-    #if det_switch == False:
     noise_cube_total = np.sqrt(noise_cube_object + n_observations*noise_cube_back + n_observations*noise_cube_dark 
                                + n_observations*noise_cube_thermal + n_observations*noise_cube_read_noise**2)
-    #else:
-    #    noise_cube_total = np.sqrt(noise_cube_object + n_observations*noise_cube_back + n_observations*noise_cube_dark + n_observations*noise_cube_thermal + n_observations*noise_cube_read_noise**2 + \
-    #                               n_observations*noise_cube_pedestal**2 + n_observations*noise_cube_c_pink**2 + n_observations*noise_cube_u_pink**2 + n_observations*noise_cube_acn**2 + \
-    #                               n_observations*noise_cube_pca0**2)
-    #    noise_cube_total_with_dets = np.sqrt(noise_cube_object + n_observations*noise_cube_back + n_observations*noise_cube_dark + n_observations*noise_cube_thermal + noise_cube_dets**2)
-    #
+
     logging.info("Saving output")
     debug_plots = False # CHANGELOG 10-01-2024: Changed debug_plots to false to stop code from breaking
     #TODO: figure out why below code block breaks
@@ -593,25 +529,20 @@ def main(input_parameters):
         total_instrument_tr = np.ones_like(lambs_extended)
         mavis_files_em = sorted(glob.glob(base_filename + "_MAVIS_*_em.txt"))
 
-        for harmoni_file, color in zip(mavis_files_em, colors):
+        for mavis_file, color in zip(mavis_files_em, colors):
             # Read part emission
             w, e = np.loadtxt(mavis_file, unpack=True)
-            m = re.search('.+MAVIS_(.+)_em.txt', harmoni_file)
+            m = re.search('.+MAVIS_(.+)_em.txt', mavis_file)
             # and throughput
             w, t = np.loadtxt(base_filename + "_MAVIS_" + m.group(1) + "_tr.txt", unpack=True)
             plt.plot(w, e/total_instrument_tr*ph2en_conv_fac, label=m.group(1), color=color, ls="--", lw=1.2)
             total_instrument_em = total_instrument_em*t + e
             total_instrument_tr = total_instrument_tr*t
 
-        #else:
-        #    # mci estimate
-        #    w, total_instrument_em = np.loadtxt(base_filename + "_HARMONI_mci_em.txt", unpack=True)
-        #    w, total_instrument_tr = np.loadtxt(base_filename + "_HARMONI_mci_tr.txt", unpack=True)
+        plt.plot(w, total_instrument_em/total_instrument_tr*ph2en_conv_fac, label="MAVIS total", color="red")
+        logging.info("MAVIS emission at input focal plane at {:.4f} um = {:.4e} W/m2/um/sr".format(np.median(w), np.median(total_instrument_em/total_instrument_tr*ph2en_conv_fac)))
 
-        plt.plot(w, total_instrument_em/total_instrument_tr*ph2en_conv_fac, label="MAVIS total", color="red") # CHANGELOG 10-01-2024: Changed text from HARMONI to MAVIS
-        logging.info("MAVIS emission at input focal plane at {:.4f} um = {:.4e} W/m2/um/sr".format(np.median(w), np.median(total_instrument_em/total_instrument_tr*ph2en_conv_fac))) # CHANGELOG 10-01-2024: Changed text from HARMONI to MAVIS
-
-        np.savetxt(base_filename + "_total_MAVIS_em.txt", np.c_[w, total_instrument_em], comments="#", header="\n".join([ # CHANGELOG 10-01-2024: Changed text from HARMONI to MAVIS
+        np.savetxt(base_filename + "_total_MAVIS_em.txt", np.c_[w, total_instrument_em], comments="#", header="\n".join([
             'TYPE: Total emission.',
             'Wavelength [um], emission']))
 
@@ -647,10 +578,6 @@ def main(input_parameters):
             plt.plot(w, e, label=m.group(1), color=color, ls="--", lw=1.2)
             total_instrument_tr *= e
             total_tr *= e
-        #else:
-         #   # mci estimate
-         #   w, total_instrument_tr = np.loadtxt(base_filename + "_HARMONI_mci_tr.txt", unpack=True)
-         #   total_tr *= total_instrument_tr
 
         plt.plot(w, total_instrument_tr, label="MAVIS total", color="red") # CHANGELOG 10-01-2024: Changed text from HARMONI to MAVIS
         
@@ -679,7 +606,7 @@ def main(input_parameters):
                 os.remove(base_filename + "_" + _ + ".txt")
                 os.remove(base_filename + "_" + _ + ".pdf")
 
-            for _ in harmoni_files_em+harmoni_files_tr:
+            for _ in mavis_files_em+mavis_files_tr:
                 filename = _.replace(".txt", "")
                 os.remove(filename + ".txt")
                 os.remove(filename + ".pdf")
@@ -689,6 +616,7 @@ def main(input_parameters):
     outFile_noiseless_object = base_filename + "_noiseless_obj.fits"
     outFile_noiseless_background = base_filename + "_noiseless_back.fits"
     outFile_noiseless_object_plus_back = base_filename + "_noiseless_obj_plus_back.fits"
+
     # With noise.
     # - Observed Obj + Back + Noise1
     # - Background  Back + Noise2
@@ -696,13 +624,16 @@ def main(input_parameters):
     outFile_observed = base_filename + "_observed_obj_plus_back.fits"
     outFile_observed_back = base_filename + "_observed_back.fits"
     outFile_reduced = base_filename + "_reduced.fits"
+
     # SNR
     # - Obj/Noise
     outFile_SNR = base_filename + "_reduced_SNR.fits"
     outFile_detSNR = base_filename + "_detector_SNR.fits"
+    
     # standard deviation cube
     outFile_std = base_filename + "_std.fits"
     outFile_detstd = base_filename + "_det_std.fits"
+    
     # detectors
     outFile_alldets = base_filename + "_all_dets.fits"
     outFile_useddets = base_filename + "_used_dets.fits"
@@ -718,14 +649,6 @@ def main(input_parameters):
 
     head['MSM_TIME'] = str(datetime.datetime.utcnow())
 
-    # CHANGELOG 11-01-2024: Removed the crosstalk application as we use visible detectors, not IR
-    # # Apply crosstalk to the noiseless cubes
-    # if grating != "V+R":
-    #     if not input_parameters["mci"]:3
-    #         output_cube_spec = apply_crosstalk(output_cube_spec, config_data["crosstalk"])
-    #         output_back_emission_cube = apply_crosstalk(output_back_emission_cube, config_data["crosstalk"])
-    #         output_cube_spec_wo_back = apply_crosstalk(output_cube_spec_wo_back, config_data["crosstalk"])
-
     save_fits_cube(outFile_noiseless_object_plus_back, output_cube_spec*NDIT, "Noiseless O+B", head)
     save_fits_cube(outFile_noiseless_background, output_back_emission_cube*NDIT, "Noiseless B", head)
     save_fits_cube(outFile_noiseless_object, output_cube_spec_wo_back*NDIT, "Noiseless O", head)
@@ -733,6 +656,7 @@ def main(input_parameters):
     save_fits_cube(outFile_observed, sim_total, "Observed O+B1+Noise1", head)
     save_fits_cube(outFile_observed_back, sim_total_only_back, "Observed B2+Noise2", head)
     save_fits_cube(outFile_reduced, sim_reduced, "Reduced (O+B1+Noise1) - (B2+Noise2)", head)
+
 
     save_fits_cube(outFile_SNR, output_cube_spec_wo_back*NDIT/noise_cube_total, "SNR (O-B)/Noise", head)
     save_fits_cube(outFile_std, noise_cube_total, "Noise standard deviation", head)
@@ -760,18 +684,13 @@ def main(input_parameters):
 
     outFile_flux_cal_noiseless = base_filename + "_noiseless_obj_flux_cal.fits"
     outFile_flux_cal_reduced = base_filename + "_reduced_flux_cal.fits"
+    outFile_flux_cal_variance = base_filename + "_reduced_variance.fits"
 
 
     head['BUNIT'] = "erg/s/cm2/um/arcsec2"
     save_fits_cube(outFile_flux_cal_noiseless, output_cube_spec_wo_back*factor_calibration/(DIT*spaxel_area), "Flux cal Noiseless O", head)
     save_fits_cube(outFile_flux_cal_reduced, sim_reduced*factor_calibration/(NDIT*DIT*spaxel_area), "Flux cal Reduced (O+B1+Noise1) - (B2+Noise2)", head)
-
-    # CHANGELOG 12-01-2024: Removed this option as it pertained to IR detectors
-    # if det_switch == True:
-    #     save_fits_cube(outFile_alldets, sim_det_systematics1, "All simulated detectors", head)
-    #     save_fits_cube(outFile_useddets, sim_only_dets, "Used detector noise", head)
-    #     save_fits_cube(outFile_detSNR, output_cube_spec_wo_back*NDIT/noise_cube_total_with_dets, "SNR (O-B)/Exact Noise", head)
-    #     save_fits_cube(outFile_detstd, noise_cube_total_with_dets, "Noise std with exact dets", head)
+    save_fits_cube(outFile_flux_cal_variance, (noise_cube_total*factor_calibration/(DIT*spaxel_area))**2, "Flux cal Variance", head)
 
     if input_parameters["debug"] == True:
         save_fits_cube(outFile_dark, noise_cube_dark, "dark noise variance", head)
