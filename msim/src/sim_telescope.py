@@ -273,6 +273,9 @@ def sim_telescope(input_parameters, cube, back_emission, transmission, ext_lambs
             cube[start:start+res.shape[0],:,:] = res
 
 
+        #clean up mem-mapped cube
+        os.remove(mmap_cube_path)
+
     else:
         for i in tqdm(range(len(lambs))):
             # CHANGELOG 09-01-2024: Added progress bar, commented out below
