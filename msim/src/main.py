@@ -690,7 +690,7 @@ def main(input_parameters):
     head['BUNIT'] = "erg/s/cm2/um/arcsec2"
     save_fits_cube(outFile_flux_cal_noiseless, output_cube_spec_wo_back*factor_calibration/(DIT*spaxel_area), "Flux cal Noiseless O", head)
     save_fits_cube(outFile_flux_cal_reduced, sim_reduced*factor_calibration/(NDIT*DIT*spaxel_area), "Flux cal Reduced (O+B1+Noise1) - (B2+Noise2)", head)
-    save_fits_cube(outFile_flux_cal_variance, (noise_cube_total*factor_calibration/(NDIT*NDIT*DIT*spaxel_area))**2, "Flux cal Variance", head)
+    save_fits_cube(outFile_flux_cal_variance, (noise_cube_total*factor_calibration/(NDIT*DIT*spaxel_area))**2, "Flux cal Variance", head)
 
     if input_parameters["debug"] == True:
         save_fits_cube(outFile_dark, noise_cube_dark, "dark noise variance", head)
