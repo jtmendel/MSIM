@@ -22,7 +22,8 @@ import astropy.io.fits as fits
 import astropy.units as u
 import numpy as np
 import scipy.constants as sp
-from scipy.interpolate import (interp2d, RectBivariateSpline)
+import reproject
+#from scipy.interpolate import (interp2d, RectBivariateSpline)
 
 from src.config import *
 from src.modules.rebin import *
@@ -166,52 +167,55 @@ def spatial_res(datacube, head, spax):
     ymax = head['CDELT2']*(y-1)
     if abs(xmax) < min_internal_pix or abs(ymax) < min_internal_pix:
         raise MSIMError('The input cube spatial dimension is too small. Minimum size is {s}x{s} mas'.format(s=int(min_internal_pix*spax_scale.psfscale)))
-    
-    print(new_sampling_x, head['CDELT1'])
+
+    #keywords for building projection headers
+    input_kwds = ['CTYPE1', 'CTYPE2', 'CDELT1', 'CDELT2', 'CUNIT1', 'CUNIT2', 
+                    'CRPIX1', 'CRPIX2', 'CRVAL1', 'CRVAL2', 'NAXIS1', 'NAXIS2']
+    output_kwds = ['CTYPE1', 'CTYPE2', 'CUNIT1', 'CUNIT2', 'CRVAL1', 'CRVAL2']
+
     if new_sampling_x != head['CDELT1'] or new_sampling_y != head['CDELT2']:
         
-        # regrid image and conserve flux
-        
-        xgrid_in = np.linspace(0, abs(xmax), x)
-        ygrid_in = np.linspace(0, abs(ymax), y)
-        
+        #need minimal spatial header for input
+        spatial_head_in = fits.Header()
+        for kwd in input_kwds:
+            spatial_head_in[kwd] = head[kwd]
+
         xgrid_out = np.arange(0, abs(xmax), abs(new_sampling_x))
         ygrid_out = np.arange(0, abs(ymax), abs(new_sampling_y))
 
-        new_cube = np.zeros((z, len(ygrid_out), len(xgrid_out)), dtype=float)
+        npix_out_x = len(xgrid_out)
+        npix_out_y = len(ygrid_out)
 
-        if (head['CDELT1']-new_sampling_x)/new_sampling_x > 1e-5:
-            logging.warning('Interpolating data cube - spatial')
-            for k in np.arange(0, z):
-                #image = interp2d(xgrid_in, ygrid_in, datacube[k,:,:], kind='linear')
-                #new_cube[k,:,:] = image(xgrid_out, ygrid_out)
-                f = RectBivariateSpline(xgrid_in, ygrid_in, datacube[k,:,:].T, kx=1, ky=1)
-                new_cube[k,:,:] = f(xgrid_out, ygrid_out).T
-            
-        elif (head['CDELT1']-new_sampling_x)/new_sampling_x < -1e-5:
-            logging.info('Rebinning data cube - spatial')
-            for k in np.arange(0, z):
-                new_cube[k,:,:] = frebin2d(datacube[k,:,:], (len(xgrid_out), len(ygrid_out)))
-        else:
-            logging.info('Keeping data cube')
-            for k in np.arange(0, z):
+        spatial_head_out = fits.Header()
+        for kwd in output_kwds:
+            spatial_head_out[kwd] = head[kwd]
+        spatial_head_out['CDELT1'] = new_sampling_x
+        spatial_head_out['CDELT2'] = new_sampling_y
+        spatial_head_out['CRPIX1'] = npix_out_x/2
+        spatial_head_out['CRPIX2'] = npix_out_y/2
+        spatial_head_out['NAXIS1'] = npix_out_x
+        spatial_head_out['NAXIS2'] = npix_out_y
+        spatial_head_out['NAXIS'] = 2
+
+        new_cube = np.zeros((z, npix_out_y, npix_out_x), dtype=float)
+
+        #run the reprojection
+        if np.fabs((head['CDELT1']-new_sampling_x)/new_sampling_x) < 1e-5:
+            for k in np.arange(0,z):
                 new_cube[k,:,:] = datacube[k,:,:]
-            
+        else:
+            logging.info('Reprojecting data cube - spatial')
+            for k in np.arange(0,z):
+                array, _ = reproject.reproject_exact((datacube[k,:,:],spatial_head_in), 
+                                                        spatial_head_out)
+                new_cube[k,:,:] = array
+        
     else:
-        
         new_cube = datacube
-        
+    
     #Update header
-    head['CRPIX1'] = 1
-    head['CRVAL1'] = x0
-    head['CDELT1'] = new_sampling_x
-    head['NAXIS1'] = new_cube.shape[2]
-    
-    head['CRPIX2'] = 1
-    head['CRVAL2'] = y0
-    head['CDELT2'] = new_sampling_y
-    head['NAXIS2'] = new_cube.shape[1]
-    
+    for kwd in input_kwds:
+        head[kwd] = spatial_head_out[kwd]
 
     logging.info('# Spatial resolution - Done')
     

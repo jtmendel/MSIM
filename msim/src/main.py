@@ -37,12 +37,14 @@ import multiprocess as mp
 import os.path
 import logging
 import warnings
+import reproject
 
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.signal import convolve2d
 from astropy.io import fits
 import astropy.constants as const
+import astropy.units as u
 
 from src.config import *
 from src.init_cube import init_cube
@@ -320,26 +322,64 @@ def main(input_parameters):
     cube_exp, back_emission, transmission, fpm_mask = simulated_data
 
     # 4 - Rebin cube to output spatial and spectral pixel size
-    logging.info("Rebin data")
+    logging.info("Reproject data to output shape")
     logging.info("- Output spaxel scale: " + str(input_parameters["spaxel_scale"]))
     z, y, x = cube_exp.shape
 
     # rebin spatial axes
     scale_x = spax_scale.xscale/spax_scale.psfscale
     scale_y = spax_scale.yscale/spax_scale.psfscale
-    out_size_x = int(x/scale_x)
-    out_size_y = int(y/scale_y)
+    out_size_x = min(int(x/scale_x), 144)
+    out_size_y = min(int(y/scale_y), 100)
     output_cube = np.zeros((z, out_size_y, out_size_x))
 
+    input_kwds = ['CTYPE1', 'CTYPE2', 'CDELT1', 'CDELT2', 'CUNIT1', 'CUNIT2', 
+                    'CRPIX1', 'CRPIX2', 'CRVAL1', 'CRVAL2', 'NAXIS1', 'NAXIS2']
+    output_kwds = ['CTYPE1', 'CTYPE2', 'CUNIT1', 'CUNIT2', 'CRVAL1', 'CRVAL2']
+    
+    #spatial header for input
+    spatial_head_in = fits.Header()
+    for kwd in input_kwds:
+        spatial_head_in[kwd] = head[kwd]
+    
+    spatial_head_out = fits.Header()
+    for kwd in output_kwds:
+        spatial_head_out[kwd] = head[kwd]
+    spatial_head_out['CDELT1'] = spax_scale.xscale*np.sign(head['CDELT1'])
+    spatial_head_out['CDELT2'] = spax_scale.yscale*np.sign(head['CDELT2'])
+    spatial_head_out['CRPIX1'] = out_size_x/2
+    spatial_head_out['CRPIX2'] = out_size_y/2
+    spatial_head_out['NAXIS1'] = out_size_x
+    spatial_head_out['NAXIS2'] = out_size_y
+    spatial_head_out['NAXIS'] = 2
+    
     for k in np.arange(0, z):
-        output_cube[k, :, :] = frebin2d(cube_exp[k, :, :], (out_size_x, out_size_y))
-
-    if fpm_mask is not None:
-        fpm_mask_rebin = frebin2d(fpm_mask, (out_size_x, out_size_y))
-
+        array, _ = reproject.reproject_exact((cube_exp[k,:,:],spatial_head_in), 
+                                                spatial_head_out)#,
+        output_cube[k,:,:] = array
+    
     # and update header
-    head['CDELT1'] = spax_scale.xscale*np.sign(head['CDELT1'])
-    head['CDELT2'] = spax_scale.yscale*np.sign(head['CDELT2'])
+    for kwd in input_kwds:
+        head[kwd] = spatial_head_out[kwd]
+    
+   
+    #put units of spatial header back into something sensible
+    head['CDELT1'] *= u.Unit(head["CUNIT1"]).to("deg")
+    head['CUNIT1'] = 'deg'
+    head['CDELT2'] *= u.Unit(head["CUNIT2"]).to("deg")
+    head['CUNIT2'] = 'deg'
+            
+
+
+#    for k in np.arange(0, z):
+#        output_cube[k, :, :] = frebin2d(cube_exp[k, :, :], (out_size_x, out_size_y))
+#
+#    if fpm_mask is not None:
+#        fpm_mask_rebin = frebin2d(fpm_mask, (out_size_x, out_size_y))
+#
+#    # and update header
+#    head['CDELT1'] = spax_scale.xscale*np.sign(head['CDELT1'])
+#    head['CDELT2'] = spax_scale.yscale*np.sign(head['CDELT2'])
 
     # rebin spectral axis
     scale_z = config_data["spectral_sampling"]["output"]/config_data["spectral_sampling"]["internal"]
